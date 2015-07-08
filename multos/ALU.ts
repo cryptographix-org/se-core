@@ -1,6 +1,6 @@
-import { ByteArray, Kind, KindInfo } from "../../../sim-core/base/base-package";
+import { ByteArray, Kind, KindInfo } from 'sim-core';
 
-export default class ALU implements Kind
+export class ALU implements Kind
 {
   /**
    * @$kindInfo

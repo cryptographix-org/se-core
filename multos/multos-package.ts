@@ -1,5 +1,5 @@
-import PackageInfo from "../../../sim-core/base/package-info";
-import ALU from "./ALU";
+import { PackageInfo } from 'sim-core';
+import { ALU } from './ALU';
 
 var $packageInfo : PackageInfo = {
   title: "seCore.MULTOS",

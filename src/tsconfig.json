@@ -1,0 +1,12 @@
+{
+    "version": "1.4.1",
+    "compilerOptions": {
+        "target": "es6",
+        "declaration": true,
+        "noImplicitAny": false,
+        "removeComments": true,
+        "emitDecoratorMetadata": true,
+        "noLib": false,
+        "outDir": "../dist/es6"
+    }
+}

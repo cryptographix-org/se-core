@@ -1,0 +1,39 @@
+{
+  "name": "se-core",
+  "version": "0.0.1",
+  "description": "An extensible framework for simulation of application-security building blocks",
+  "keywords": [
+    "cryptographic",
+    "security",
+    "simulation",
+    "smart-card", 
+    "secure-elements"
+  ],
+  "homepage": "http://cryptographics.net",
+  "bugs": {
+    "url": "https://github.com/cryptographics/se-core/issues"
+  },
+  "license": "MIT",
+  "author": "Sean Wykes <sean.public@nascent.com.br> (http://nascent.com.br/)",
+  "main": "dist/commonjs/index.js",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/cryptographics/sim-core"
+  },
+  "jspm": {
+    "main": "index",
+    "format": "amd",
+    "directories": {
+      "lib": "dist/amd"
+    },
+    "dependencies": {},
+    "devDependencies": {
+      "babel": "npm:babel-core@^5.1.13",
+      "babel-runtime": "npm:babel-runtime@^5.1.13",
+      "core-js": "npm:core-js@^0.9.5"
+    }
+  },
+  "devDependencies": {
+    "cgfx-build-tools": "^0.1.1"
+  }
+}
