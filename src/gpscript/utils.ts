@@ -1,4 +1,4 @@
-export default class Hex
+export class Hex
 {
   private static decoder;
 

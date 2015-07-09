@@ -1,12 +1,12 @@
 {
   "name": "se-core",
   "version": "0.0.1",
-  "description": "An extensible framework for simulation of application-security building blocks",
+  "description": "Secure Element and Smartcard simulation core classes",
   "keywords": [
     "cryptographic",
     "security",
     "simulation",
-    "smart-card", 
+    "smart-card",
     "secure-elements"
   ],
   "homepage": "http://cryptographics.net",

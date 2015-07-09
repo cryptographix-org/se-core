@@ -1,7 +1,7 @@
-import ByteString from "./byte-string";
-import TLV from "./tlv";
+import { ByteString } from './byte-string';
+import { TLV } from './tlv';
 
-export default class TLVList
+export class TLVList
 {
   _tlvs: TLV[];
 

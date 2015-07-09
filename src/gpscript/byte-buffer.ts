@@ -1,6 +1,6 @@
-import ByteString from "./byte-string";
+import { ByteString } from './byte-string';
 
-export default class ByteBuffer
+export class ByteBuffer
 {
   _bytes: Uint8Array;
 

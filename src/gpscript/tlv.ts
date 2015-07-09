@@ -1,7 +1,7 @@
-import ByteString from "./byte-string";
-import ByteBuffer from "./byte-buffer";
+import { ByteString } from './byte-string';
+import { ByteBuffer } from './byte-buffer';
 
-export default class TLV
+export class TLV
 {
   _bytes: Uint8Array;
   _encoding: number;

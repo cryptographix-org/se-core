@@ -1,8 +1,8 @@
-import ByteString from "./byte-string";
-import ByteBuffer from "./byte-buffer";
-import Key from './key';
+import { ByteString } from './byte-string';
+import { ByteBuffer } from './byte-buffer';
+import { Key } from './key';
 
-export default class Crypto
+export class Crypto
 {
   constructor()
   {

@@ -1,6 +1,6 @@
-import ByteString from "./byte-string";
+import { ByteString } from './byte-string';
 
-export default class Key
+export class Key
 {
   _type: number;
   _size: number;

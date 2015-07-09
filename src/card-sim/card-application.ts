@@ -1,5 +1,4 @@
-import { ISO7816 } from '../../iso7816/ISO7816';
-import { ByteString, HEX, ByteBuffer, TLV, Crypto, Key } from '../../se-core/gpscript/gpscript-package';
+import { ISO7816 } from '../iso7816/ISO7816';
 
 export class CardApplication
 {

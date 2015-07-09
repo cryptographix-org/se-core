@@ -1,8 +1,8 @@
-import ByteBuffer from "./byte-buffer";
-import Crypto from "./crypto";
-import Hex from './utils';
+import { ByteBuffer } from './byte-buffer';
+import { Crypto } from './crypto';
+import { Hex } from './utils';
 
-export default class ByteString
+export class ByteString
 {
   static UTF8 = 2;
   static BASE64 = 4;
