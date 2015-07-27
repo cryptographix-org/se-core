@@ -142,3 +142,8 @@ export class ByteString
     return res;
   }
 }
+
+export const HEX = ByteString.HEX;
+export const ASCII = ByteString.ASCII;
+export const BASE64 = ByteString.BASE64;
+export const UTF8 = ByteString.UTF8;

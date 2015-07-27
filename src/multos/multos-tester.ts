@@ -396,7 +396,7 @@ var testALU = [
   0x70,0x74,0x65,0x6e,0x00,0x00,0x00,0x00,
 ];
 
-export default class MULTOSTester {
+export class MULTOSTester {
   execTests()
   {
     var ba = new ByteArray( testALU );
