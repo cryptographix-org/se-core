@@ -1,4 +1,4 @@
-import { ByteArray, Kind, KindInfo } from 'sim-core';
+import { ByteArray,Kind,KindInfo } from 'sim-core';
 
 export class ALU implements Kind
 {
