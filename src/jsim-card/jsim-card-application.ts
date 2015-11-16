@@ -1,0 +1,26 @@
+import { ISO7816 } from '../iso7816/ISO7816';
+
+export class CardApplication
+{
+  onAPDUResponse;
+
+  constructor( onAPDUResponse )
+  {
+    this.onAPDUResponse = onAPDUResponse;
+  }
+
+  selectApplication( bP1, bP2, sAID )
+  {
+    return { sw: 0x9000, data: null };
+  }
+
+  deselectApplication()
+  {
+    // no return { sw: 0x9000, data: null };
+  }
+
+  executeAPDUCommand( bCLA, bINS, bP1, bP2, commandData, wLe )
+  {
+    return { sw: 0x6D00, data: null };
+  }
+}
