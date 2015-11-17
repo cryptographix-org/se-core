@@ -1,4 +1,4 @@
-import { ALU } from './ALU';
+import { ALU } from 'se-core';
 import { ByteArray } from 'sim-core';
 
 var testALU = [
@@ -396,13 +396,11 @@ var testALU = [
   0x70,0x74,0x65,0x6e,0x00,0x00,0x00,0x00,
 ];
 
-export class MULTOSTester {
-  execTests()
-  {
+describe('Multos ALU', ()=> {
+  it('can decode a binary object', ()=> {
     var ba = new ByteArray( testALU );
-    var MultosALU = ALU;
 
-    var aluX = MultosALU.decodeBlob( ba );
-  }
-
-}
+    var aluX = new ALU().decodeBytes( ba );
+    console.log( aluX.toJSON() );
+  })
+});

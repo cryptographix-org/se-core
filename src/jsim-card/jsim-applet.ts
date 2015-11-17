@@ -1,6 +1,8 @@
 import { ISO7816 } from '../iso7816/ISO7816';
+import { CommandAPDU } from '../iso7816/command-apdu';
+import { ResponseAPDU } from '../iso7816/response-apdu';
 
-export class CardApplication
+export class JSIMApplet
 {
   onAPDUResponse;
 
@@ -9,9 +11,9 @@ export class CardApplication
     this.onAPDUResponse = onAPDUResponse;
   }
 
-  selectApplication( bP1, bP2, sAID )
+  selectApplication( bP1, bP2, sAID ): ResponseAPDU
   {
-    return { sw: 0x9000, data: null };
+    return new ResponseAPDU( { sw: 0x9000, data: null } );
   }
 
   deselectApplication()
