@@ -1,73 +1,65 @@
+import { ByteArray } from 'sim-core';
 import { ByteString } from './byte-string';
 
 export class ByteBuffer
 {
-  _bytes: Uint8Array;
+  byteArray: ByteArray;
 
   constructor ( value?, encoding? )
   {
-    if ( value instanceof Uint8Array )
+    if ( value instanceof ByteArray )
     {
-      this._bytes = value;
+      this.byteArray = value;
     }
     else if ( value instanceof ByteString )
     {
-      this._bytes = value._bytes;
+      this.byteArray = value.bytes;
     }
     else if ( encoding != undefined )
     {
-      this._bytes = new ByteString( value, encoding )._bytes;
+      this.byteArray = new ByteString( value, encoding ).byteArray;
     }
     else
-      this._bytes = new Uint8Array( 0 );
-
-    this.length = this._bytes.length;
+      this.byteArray = new ByteArray( [] );
   }
 
-  length: number;
+  get length()
+  {
+    return this.byteArray.length;
+  }
 
   toByteString(): ByteString
   {
-    return new ByteString( this._bytes );
+    return new ByteString( this.byteArray );
   }
 
   clear()
   {
-    this._bytes = new Uint8Array( 0 );
-
-    this.length = this._bytes.length;
+    this.byteArray = new ByteArray( [] );
   }
 
-  append( value ): ByteBuffer
+  append( value: ByteString | ByteBuffer | number ): ByteBuffer
   {
-    var valueArray = undefined;
+    let valueArray: ByteArray;
 
     if ( ( value instanceof ByteString ) || ( value instanceof ByteBuffer ) )
     {
-      valueArray = value._bytes;
+      valueArray = value.byteArray;
     }
     else if ( typeof value == "number" )
     {
-      valueArray = new Uint8Array( 1 );
-      valueArray[0] = ( value & 0xff );
+      valueArray = new ByteArray( [ ( value & 0xff ) ] );
     }
-    else if ( typeof value == "string" )
+/*    else if ( typeof value == "string" )
     {
       valueArray = new Uint8Array( value.length );
       for( var i = 0; i < value.length; ++i )
         valueArray[i] = value.charAt( i );
-    }
-    else
-      valueArray = new Uint8Array( value );
+    }*/
+//    else
+//      valueArray = new ByteArray( value );
 
-    var old = this._bytes;
-
-    this.length += valueArray.length;
-
-    this._bytes = new Uint8Array( this.length );
-
-    this._bytes.set( old );
-    this._bytes.set( valueArray, old.length );
+    this.byteArray.concat( valueArray );
 
     return this;
   }

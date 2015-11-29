@@ -13,7 +13,7 @@ export class TLVList
 
     while( off < tlvStream.length )
     {
-      var tlvInfo = TLV.parseTLV( new ByteString( tlvStream._bytes.subarray( off ) ), encoding )
+      var tlvInfo = TLV.parseTLV( tlvStream.bytes( off ), encoding )
 
       if ( tlvInfo == null )
       {
@@ -32,7 +32,7 @@ export class TLVList
     }
   }
 
-  index( /*Number*/ index )
+  index( index: number ): TLV
   {
     return this._tlvs[ index ];
   }

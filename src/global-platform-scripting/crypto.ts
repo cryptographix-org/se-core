@@ -1,3 +1,4 @@
+import { ByteArray } from 'sim-core';
 import { ByteString } from './byte-string';
 import { ByteBuffer } from './byte-buffer';
 import { Key } from './key';
@@ -10,19 +11,19 @@ export class Crypto
 
   encrypt( key, mech, data: ByteString )
   {
-    var k = key.getComponent( Key.SECRET )._bytes;
-
-    var keyData: Uint8Array = k;
+    var k: ByteArray = key.getComponent( Key.SECRET ).byteArray;
 
     if ( k.length == 16 )  // 3DES Double -> Triple
     {
-      keyData = new Uint8Array( 24 );
+      var orig = k;
 
-      keyData.set( k, 0 );
-      keyData.set( k.subarray( 0, 8 ), 16 );
+      k = new ByteArray( [] ).setLength( 24 );
+
+      k.setBytesAt( 0, orig );
+      k.setBytesAt( 16, orig.slice( 0, 8 ) );
     }
 
-    var cryptoText = new ByteBuffer( this.des( keyData, data._bytes, 1, 0 ) );
+    var cryptoText = new ByteBuffer( this.des( k.backingArray, data.byteArray.backingArray, 1, 0 ) );
 
     return cryptoText.toByteString();
   }
@@ -32,7 +33,7 @@ export class Crypto
     return data;
   }
 
-  sign( key, mech, data, iv )
+  sign( key, mech, data, iv? )
   {
     var k = key.getComponent( Key.SECRET )._bytes;
 

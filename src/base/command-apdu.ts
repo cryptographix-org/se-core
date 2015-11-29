@@ -15,7 +15,7 @@ export class CommandAPDU implements Kind
     .field( 'P1', 'P1 Param', 'byte' )
     .field( 'P2', 'P2 Param', 'byte' )
     .field( 'Lc', 'Command Length', 'integer' )
-    .field( 'Data', 'Command Data', 'bytearray' )
+    .field( 'data', 'Command Data', 'bytearray' )
     .field( 'Le', 'Expected Length', 'integer' )
     .seal();
 
@@ -29,7 +29,7 @@ export class CommandAPDU implements Kind
     INS: 0,
     P1: 0,
     P2: 0,
-    Data: undefined,
+    data: undefined,
     Le: 0
   };
 
@@ -49,19 +49,31 @@ export class CommandAPDU implements Kind
   }
 
   /**
-   * Builder
+   * Fluent Builder
    */
-  buildCommand( CLA: number, INS: number, P1: number, P2: number, data?: ByteArray, expectedLen? ): CommandAPDU
+  public static init( CLA?: number, INS?: number, P1?: number, P2?: number, data?: ByteArray, expectedLen?: number ): CommandAPDU
+  {
+    return ( new CommandAPDU() ).set( CLA, INS, P1, P2, data, expectedLen );
+  }
+
+  public set( CLA: number, INS: number, P1: number, P2: number, data?: ByteArray, expectedLen?: number ): CommandAPDU
   {
     this.properties.CLA = CLA;
     this.properties.INS = INS;
     this.properties.P1 = P1;
     this.properties.P2 = P2;
-    this.properties.Data = data;
+    this.properties.data = data;
     this.properties.Le = expectedLen;
 
     return this;
   }
+
+  public setCLA( CLA: number ): CommandAPDU      { this.properties.CLA = CLA; return this; }
+  public setINS( INS: number ): CommandAPDU      { this.properties.INS = INS; return this; }
+  public setP1( P1: number ): CommandAPDU        { this.properties.P1 = P1; return this; }
+  public setP2( P2: number ): CommandAPDU        { this.properties.P2 = P2; return this; }
+  public setData( data: ByteArray ): CommandAPDU { this.properties.data = data; return this; }
+  public setLe( Le: number ): CommandAPDU        { this.properties.Le = Le; return this; }
 
   /**
    * Serialization, returns a JSON object
@@ -98,7 +110,7 @@ export class CommandAPDU implements Kind
     if ( byteArray.length > offset + 1 )
     {
       var Lc = byteArray.byteAt( offset++ );
-      this.properties.Data = byteArray.bytes( offset, Lc );
+      this.properties.data = byteArray.slice( offset, Lc );
       offset += Lc;
     }
 

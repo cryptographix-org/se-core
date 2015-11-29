@@ -1,113 +1,97 @@
+import { ByteArray } from 'sim-core';
+
 import { ByteBuffer } from './byte-buffer';
 import { Crypto } from './crypto';
-import { Hex } from './utils';
 
 export class ByteString
 {
-  static UTF8 = 2;
-  static BASE64 = 4;
-  static ASCII = 3;
-  static HEX = 16;
+  public byteArray: ByteArray;
 
-  constructor( value, encoding? )
+  public static HEX = ByteArray.HEX;
+  public static BASE64 = ByteArray.HEX;
+
+  constructor( value: string | ByteString | ByteArray, encoding?: number )
   {
-    if ( encoding == undefined )
+    if ( !encoding )
     {
       if ( value instanceof ByteString )
-        this._bytes = value._bytes;
-      else if ( value instanceof Uint8Array )
-        this._bytes = value;
-      else
-        this._bytes = new Uint8Array( value );
+        this.byteArray = value.byteArray;
+      else if ( value instanceof ByteArray )
+        this.byteArray = value.slice(0,value.length);
+//      else
+//        super( Uint8Array( value ) );
     }
     else
     {
       switch( encoding )
       {
         case ByteString.HEX:
-          this._bytes = new Uint8Array( Hex.decode( value ) );
+          this.byteArray = new ByteArray( <string>value, ByteArray.HEX );
           break;
 
         default:
           throw "ByteString unsupported encoding";
       }
     }
-    this.length = this._bytes.length;
   }
 
-  length: number;
-  _bytes: Uint8Array;
+  get length(): number
+  {
+    return this.byteArray.length;
+  }
 
   bytes( offset: number, count?: number ): ByteString
   {
-    var end = ( count != undefined ) ? ( offset + count ) : this._bytes.length;
+    var end = ( count != undefined ) ? ( offset + count ) : this.byteArray.length;
 
-    return new ByteString( this._bytes.subarray( offset, end ) );
+    return new ByteString( this.byteArray.slice( offset, end ) );
   }
 
   byteAt( offset: number ): number
   {
-    return this._bytes[ offset ];
+    return this.byteArray.byteAt( offset );
   }
 
   equals( otherByteString: ByteString )
   {
-    return !( this._bytes < otherByteString._bytes ) && !( this._bytes > otherByteString._bytes );
+//    return !( this._bytes < otherByteString._bytes ) && !( this._bytes > otherByteString._bytes );
   }
 
   concat( value: ByteString ): ByteString
   {
-    var x = new Uint8Array( this._bytes.length + value.length );
-    x.set( this._bytes );
-    x.set( value._bytes, this._bytes.length );
+    this.byteArray.concat( value.byteArray );
 
-    this._bytes = x; this.length = this._bytes.length;
-
-    return new ByteString( x );
+    return this;
   }
 
-  left( /*Number*/value )
+  left( count: number )
   {
-    return new ByteString( this._bytes.subarray( 0, value ) );
+    return new ByteString( this.byteArray.slice( 0, count ) );
   }
 
-  right( /*Number*/ value )
+  right( count: number ): ByteString
   {
-    return new ByteString( this._bytes.subarray( -value ) );
+    return new ByteString( this.byteArray.slice( -count, 0 ) );
   }
 
   not( ): ByteString
   {
-    var bs = new Uint8Array( this._bytes ); // clone
-    for( var i = 0; i < bs.length; ++i )
-      bs[i] = bs[i] ^0xFF;
-
-    return new ByteString( bs );
+    return new ByteString( this.byteArray.not() );
   }
 
   and( value: ByteString ): ByteString
   {
-    var bs = new Uint8Array( this._bytes ); // clone
-
-    for( var i = 0; i < bs.length; ++i )
-      bs[i] = bs[i] & value._bytes[ i ];
-
-    return new ByteString( bs );
+    return new ByteString( this.byteArray.and( value.byteArray) );
   }
 
   or( value: ByteString ): ByteString
   {
-    var bs = new Uint8Array( this._bytes ); // clone
-
-    for( var i = 0; i < bs.length; ++i )
-      bs[i] = bs[i] | value._bytes[ i ];
-
-    return new ByteString( bs );
+    return new ByteString( this.byteArray.or( value.byteArray) );
   }
 
   pad( method: number, optional?: boolean )
   {
-    var bs = new ByteBuffer( this._bytes ); // clone
+    var bs = new ByteBuffer( this.byteArray ); // clone
 
     if ( optional == undefined )
       optional = false;
@@ -125,25 +109,14 @@ export class ByteString
     return bs.toByteString();
   }
 
-  toString( encoding )
+  toString( encoding?: number ): string
   {
-    var res = "";
-//    if ( encoding == undefined )
-//    {
-//      for( var i = 0; i < this._bytes.length; ++i )
-//        res += String.fromCharCode( this._bytes[ i ] );
-//  }
-//    else
-    {
-      for( var i = 0; i < this._bytes.length; ++i )
-        res += ( "0" + (this._bytes[ i ]).toString( 16 ).toUpperCase() ).slice( -2 );
-    }
-
-    return res;
+    //TODO: encoding ...
+    return this.byteArray.toString( ByteArray.HEX );
   }
 }
 
 export const HEX = ByteString.HEX;
-export const ASCII = ByteString.ASCII;
+//export const ASCII = ByteString.ASCII;
 export const BASE64 = ByteString.BASE64;
-export const UTF8 = ByteString.UTF8;
+//export const UTF8 = ByteString.UTF8;

@@ -1,28 +1,24 @@
-import { ISO7816 } from '../iso7816/ISO7816';
-import { CommandAPDU } from '../iso7816/command-apdu';
-import { ResponseAPDU } from '../iso7816/response-apdu';
+import { ISO7816 } from '../base/ISO7816';
+import { CommandAPDU } from '../base/command-apdu';
+import { ResponseAPDU } from '../base/response-apdu';
 
 export class JSIMApplet
 {
-  onAPDUResponse;
-
-  constructor( onAPDUResponse )
+  selectApplication( commandAPDU: CommandAPDU ): Promise<ResponseAPDU>
   {
-    this.onAPDUResponse = onAPDUResponse;
-  }
-
-  selectApplication( bP1, bP2, sAID ): ResponseAPDU
-  {
-    return new ResponseAPDU( { sw: 0x9000, data: null } );
+    return new Promise<ResponseAPDU>( (resolve, reject ) => {
+      return new ResponseAPDU( { sw: 0x9000, data: null } );
+    });
   }
 
   deselectApplication()
   {
-    // no return { sw: 0x9000, data: null };
   }
 
-  executeAPDUCommand( bCLA, bINS, bP1, bP2, commandData, wLe )
+  executeAPDU( commandAPDU: CommandAPDU ): Promise<ResponseAPDU>
   {
-    return { sw: 0x6D00, data: null };
+    return new Promise<ResponseAPDU>( (resolve, reject ) => {
+      return new ResponseAPDU( { sw: 0x6D00, data: null } );
+    });
   }
 }

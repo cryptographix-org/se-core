@@ -59,7 +59,7 @@ export class ALU implements Kind
       --segmentID;
     }
 
-    return bytes.bytes( offset + 2, bytes.wordAt( offset ) );
+    return bytes.slice( offset + 2, bytes.wordAt( offset ) );
   }
 
   /**
