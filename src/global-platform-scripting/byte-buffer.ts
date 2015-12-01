@@ -48,7 +48,7 @@ export class ByteBuffer
     }
     else if ( typeof value == "number" )
     {
-      valueArray = new ByteArray( [ ( value & 0xff ) ] );
+      valueArray = new ByteArray( [ ( <number>value & 0xff ) ] );
     }
 /*    else if ( typeof value == "string" )
     {

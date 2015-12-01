@@ -56,6 +56,25 @@ export class JSIMSlot implements Slot
     if ( !this.isPowered )
       return Promise.reject<ResponseAPDU>( new Error( "JSIM: Card unpowered" ) );
 
-    return this.card.executeAPDU( commandAPDU );
+    return this.card.exchangeAPDU( commandAPDU );
+  }
+
+  insertCard( card: JSIMCard )
+  {
+    if ( this.card )
+      this.ejectCard();
+
+    this.card = card;
+  }
+
+  ejectCard()
+  {
+    if ( this.card )
+    {
+      if ( this.card.isPowered )
+        this.card.powerOff();
+
+      this.card = undefined;
+    }
   }
 }

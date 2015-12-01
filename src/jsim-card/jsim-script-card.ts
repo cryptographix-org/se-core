@@ -1,34 +1,29 @@
 import { ByteArray } from 'sim-core';
 
 import { ISO7816 } from '../base/ISO7816';
-import { Slot } from '../base/slot';
 import { CommandAPDU } from '../base/command-apdu';
 import { ResponseAPDU } from '../base/response-apdu';
 
-import { JSIMApplet } from './jsim-applet';
+import { JSIMCard } from './jsim-card';
+import { JSIMScriptApplet } from './jsim-script-applet';
 
-export class JSIMCard implements Slot
+export class JSIMScriptCard implements JSIMCard
 {
   private powerIsOn: boolean;
   private atr: ByteArray;
 
-  applets: { aid: ByteArray, applet: JSIMApplet }[];
+  applets: { aid: ByteArray, applet: JSIMScriptApplet }[];
 
-  selectedApplet: JSIMApplet;
+  selectedApplet: JSIMScriptApplet;
 
   constructor()
   {
     this.atr = new ByteArray( [] );
   }
 
-  loadApplication( aid: ByteArray, applet: JSIMApplet )
+  loadApplication( aid: ByteArray, applet: JSIMScriptApplet )
   {
     this.applets.push( { aid: aid, applet: applet } );
-  }
-
-  get isPresent()
-  {
-    return true;
   }
 
   get isPowered(): boolean
@@ -38,20 +33,32 @@ export class JSIMCard implements Slot
 
   powerOn(): Promise<ByteArray>
   {
+    this.powerIsOn = true;
+
     return Promise.resolve( this.atr );
   }
 
   powerOff(): Promise<any>
   {
+    this.powerIsOn = false;
+
+    this.selectedApplet = undefined;
+
     return Promise.resolve(  );
   }
 
   reset(): Promise<ByteArray>
   {
+    this.powerIsOn = true;
+
+    this.selectedApplet = undefined;
+
+    // TODO: Reset
+
     return Promise.resolve( this.atr );
   }
 
-  executeAPDU( commandAPDU: CommandAPDU ): Promise<ResponseAPDU>
+  exchangeAPDU( commandAPDU: CommandAPDU ): Promise<ResponseAPDU>
   {
     if ( commandAPDU.properties.INS == 0xA4 )
     {
@@ -70,5 +77,4 @@ export class JSIMCard implements Slot
 
     return this.selectedApplet.executeAPDU( commandAPDU );
   }
-
 }
