@@ -1,8 +1,8 @@
-import { CommandAPDU, ResponseAPDU } from 'se-core';
+import { CommandAPDU, ResponseAPDU } from 'cryptographix-se-core';
 
 describe('CommandAPDU', ()=> {
   it('can be created empty', ()=>{
     var cmd = new CommandAPDU();
-    expect( cmd.properties.CLA ).toBe( 0 );
+    expect( cmd.CLA ).toBe( 0 );
   })
 });

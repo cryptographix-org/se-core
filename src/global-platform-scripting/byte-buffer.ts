@@ -1,4 +1,4 @@
-import { ByteArray } from 'sim-core';
+import { ByteArray } from 'cryptographix-sim-core';
 import { ByteString } from './byte-string';
 
 export class ByteBuffer

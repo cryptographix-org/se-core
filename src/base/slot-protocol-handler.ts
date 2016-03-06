@@ -1,4 +1,4 @@
-import { ByteArray, EndPoint, Message } from 'sim-core';
+import { ByteArray, EndPoint, Message, MessageHeader } from 'cryptographix-sim-core';
 
 import { Slot } from '../base/slot';
 import { CommandAPDU } from '../base/command-apdu';
@@ -28,7 +28,7 @@ export class SlotProtocolHandler
     this.slot = undefined;
   }
 
-  onMessage( endPoint: EndPoint, packet: Message )
+  onMessage( packet: Message<any>, receivingEndPoint: EndPoint )
   {
     let hdr: any = packet.header;
     let payload = packet.payload;
@@ -43,16 +43,17 @@ export class SlotProtocolHandler
         let commandAPDU: CommandAPDU = <CommandAPDU>payload;
 
         var resp = this.slot.executeAPDU( commandAPDU );
+        let x: MessageHeader = null;
 
         resp.then( ( responseAPDU ) => {
-          let replyPacket = new Message( { command: "executeAPDU", kind: ResponseAPDU }, responseAPDU );
+          let replyPacket = new Message<ResponseAPDU>( { method: "executeAPDU" }, responseAPDU );
 
-          endPoint.sendMessage( replyPacket );
+          receivingEndPoint.sendMessage( replyPacket );
         })
         .catch( () => {
-          let errorPacket = new Message( { command: "error" }, undefined );
+          let errorPacket = new Message<Error>( { method: "error" }, undefined );
 
-          endPoint.sendMessage( errorPacket );
+          receivingEndPoint.sendMessage( errorPacket );
         });
 
         break;

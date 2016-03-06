@@ -1,11 +1,13 @@
 {
-    "version": "1.6",
-    "compilerOptions": {
-        "target": "es6",
-        "declaration": true,
-        "noImplicitAny": false,
-        "removeComments": true,
-        "noLib": false,
-        "outDir": "../dist/es6"
-    }
+  "version": "1.7",
+  "compilerOptions": {
+    "target": "es6",
+    "declaration": true,
+    "noImplicitAny": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "removeComments": true,
+    "noLib": false,
+    "outDir": "../dist/es6"
+  }
 }

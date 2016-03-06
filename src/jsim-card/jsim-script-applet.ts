@@ -6,9 +6,7 @@ export class JSIMScriptApplet
 {
   selectApplication( commandAPDU: CommandAPDU ): Promise<ResponseAPDU>
   {
-    return new Promise<ResponseAPDU>( (resolve, reject ) => {
-      resolve( new ResponseAPDU( { sw: 0x9000, data: null } ) );
-    });
+    return Promise.resolve<ResponseAPDU>( new ResponseAPDU( { sw: 0x9000 } ) );
   }
 
   deselectApplication()
@@ -17,8 +15,6 @@ export class JSIMScriptApplet
 
   executeAPDU( commandAPDU: CommandAPDU ): Promise<ResponseAPDU>
   {
-    return new Promise<ResponseAPDU>( (resolve, reject ) => {
-      resolve( new ResponseAPDU( { sw: 0x6D00, data: null } ) );
-    });
+    return Promise.resolve<ResponseAPDU>( new ResponseAPDU( { sw: 0x6D00 } ) );
   }
 }

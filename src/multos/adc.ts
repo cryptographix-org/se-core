@@ -1,4 +1,4 @@
-import { ByteArray,Kind,KindInfo } from 'sim-core';
+import { ByteArray,Kind,KindInfo } from 'cryptographix-sim-core';
 
 export class ADC
 {

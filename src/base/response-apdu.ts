@@ -1,28 +1,15 @@
-import { ByteArray, Kind, KindInfo } from 'sim-core';
+import { ByteArray, Kind, KindInfo, KindBuilder } from 'cryptographix-sim-core';
+import { ISO7816 } from './iso7816';
 
 /**
  * Encoder/Decodor for a APDU Response
  */
 export class ResponseAPDU implements Kind
 {
-  /**
-   * @$kindInfo
-   */
-  private static $kindInfo: KindInfo = KindInfo.$kindHelper
-    .init( 'APDUResponse', 'ISO7816 Response APDU' )
-    .field( 'SW', 'Status Word', 'integer' )
-    .field( 'data', 'Response Data', 'bytearray' )
-    .seal();
+  SW: number = ISO7816.SW_SUCCESS;
+  data: ByteArray = new ByteArray();
 
-  get kindInfo()
-  {
-    return ResponseAPDU.$kindInfo;
-  }
-
-  properties = {
-    SW: 0,
-    data: undefined,
-  };
+//  static kindInfo: KindInfo;
 
   /**
    * @constructor
@@ -31,13 +18,10 @@ export class ResponseAPDU implements Kind
    */
   constructor( attributes?: {} )
   {
-    if ( attributes )
-    {
-      for( let prop in this.properties )
-        if ( attributes[ prop ])
-          this.properties[ prop ] = attributes[prop];
-    }
+    Kind.initFields( this, attributes );
   }
+
+  public get La() { return this.data.length; }
 
   public static init( sw: number, data?: ByteArray ): ResponseAPDU
   {
@@ -46,40 +30,29 @@ export class ResponseAPDU implements Kind
 
   public set( sw: number, data?: ByteArray ): ResponseAPDU
   {
-    this.properties = {
-      SW: sw,
-      data: data
-    };
+    this.SW = sw;
+    this.data = data || new ByteArray();
 
     return this;
   }
 
-  public setSW( SW: number ): ResponseAPDU        { this.properties.SW = SW; return this; }
-  public setSW1( SW1: number ): ResponseAPDU      { this.properties.SW = ( this.properties.SW & 0xFF ) | ( SW1 << 8 ); return this; }
-  public setSW2( SW2: number ): ResponseAPDU      { this.properties.SW = ( this.properties.SW & 0xFF00 ) | SW2; return this; }
-  public setData( Data: ByteArray ): ResponseAPDU { this.properties.data = Data; return this; }
+  public setSW( SW: number ): ResponseAPDU        { this.SW = SW; return this; }
+  public setSW1( SW1: number ): ResponseAPDU      { this.SW = ( this.SW & 0xFF ) | ( SW1 << 8 ); return this; }
+  public setSW2( SW2: number ): ResponseAPDU      { this.SW = ( this.SW & 0xFF00 ) | SW2; return this; }
+  public setData( data: ByteArray ): ResponseAPDU { this.data = data; return this; }
 
   /**
    * Encoder function, returns a blob from an APDUResponse object
    */
   public encodeBytes( options?: {} ): ByteArray
   {
-    var apduResp = [], len = 0;
-    let props = this.properties;
+    let ba = new ByteArray().setLength( this.La + 2 );
 
-    if ( props.data )
-    {
-      while( len < props.data.length )
-      {
-        apduResp[ len ] = props.data.byteAt( len );
-        ++len;
-      }
-    }
+    ba.setBytesAt( 0, this.data );
+    ba.setByteAt( this.La    , ( this.SW >> 8 ) & 0xff );
+    ba.setByteAt( this.La + 1, ( this.SW >> 0 ) & 0xff );
 
-    apduResp[ len++ ] = ( props.SW >> 8 ) & 0xff;
-    apduResp[ len++ ] = ( props.SW >> 0 ) & 0xff;
-
-    return new ByteArray( apduResp );
+    return ba;
   }
 
   public decodeBytes( byteArray: ByteArray, options?: {} ): ResponseAPDU
@@ -89,10 +62,15 @@ export class ResponseAPDU implements Kind
 
     let la = byteArray.length - 2;
 
-    this.properties.SW = byteArray.wordAt( la );
-    if ( la )
-      this.properties.data = byteArray.slice( 0, la );
+    this.SW = byteArray.wordAt( la );
+    this.data = ( la ) ? byteArray.bytesAt( 0, la ) : new ByteArray();
 
     return this;
   }
 }
+
+KindBuilder.init( ResponseAPDU, 'ISO7816 Response APDU' )
+  .integerField( 'SW', 'Status Word', { maximum: 0xFFFF } )
+  .integerField( 'La', 'Actual Length',  { calculated: true } )
+  .field( 'Data', 'Response Data', ByteArray )
+  ;

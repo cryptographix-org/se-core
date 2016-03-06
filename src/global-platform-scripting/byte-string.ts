@@ -1,4 +1,4 @@
-import { ByteArray } from 'sim-core';
+import { ByteArray } from 'cryptographix-sim-core';
 
 import { ByteBuffer } from './byte-buffer';
 import { Crypto } from './crypto';
@@ -15,9 +15,9 @@ export class ByteString
     if ( !encoding )
     {
       if ( value instanceof ByteString )
-        this.byteArray = value.byteArray;
+        this.byteArray = value.byteArray.clone();
       else if ( value instanceof ByteArray )
-        this.byteArray = value.slice(0,value.length);
+        this.byteArray = value.clone();
 //      else
 //        super( Uint8Array( value ) );
     }
@@ -42,9 +42,7 @@ export class ByteString
 
   bytes( offset: number, count?: number ): ByteString
   {
-    var end = ( count != undefined ) ? ( offset + count ) : this.byteArray.length;
-
-    return new ByteString( this.byteArray.slice( offset, end ) );
+    return new ByteString( this.byteArray.viewAt( offset, count ) );
   }
 
   byteAt( offset: number ): number
@@ -66,32 +64,32 @@ export class ByteString
 
   left( count: number )
   {
-    return new ByteString( this.byteArray.slice( 0, count ) );
+    return new ByteString( this.byteArray.viewAt( 0 ) );
   }
 
   right( count: number ): ByteString
   {
-    return new ByteString( this.byteArray.slice( -count, 0 ) );
+    return new ByteString( this.byteArray.viewAt( -count ) );
   }
 
   not( ): ByteString
   {
-    return new ByteString( this.byteArray.not() );
+    return new ByteString( this.byteArray.clone().not() );
   }
 
   and( value: ByteString ): ByteString
   {
-    return new ByteString( this.byteArray.and( value.byteArray) );
+    return new ByteString( this.byteArray.clone().and( value.byteArray) );
   }
 
   or( value: ByteString ): ByteString
   {
-    return new ByteString( this.byteArray.or( value.byteArray) );
+    return new ByteString( this.byteArray.clone().or( value.byteArray) );
   }
 
   pad( method: number, optional?: boolean )
   {
-    var bs = new ByteBuffer( this.byteArray ); // clone
+    var bs = new ByteBuffer( this.byteArray );
 
     if ( optional == undefined )
       optional = false;

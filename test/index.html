@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <title>Cryptographix Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="jspm_packages/system.js"></script>
+  <script src="config.js"></script>
+  <link rel="stylesheet" href="lib/jasmine-2.4.1/jasmine.css">
+
+  <script src="lib/jasmine-2.4.1/jasmine.js"></script>
+  <script src="lib/jasmine-2.4.1/jasmine-html.js"></script>
+  <script src="lib/jasmine-2.4.1/boot.js"></script>
+
+</head>
+<body>
+</body>
+<script>
+
+var xonload = window.onload;
+window.onload = null;
+//console.log( xonload );
+System.import( 'cryptographix-se-core.tests' ).then( function( spec ) {
+  xonload();
+}).catch(function(err) {
+  console.log('System: ' + err);
+});
+</script>
+</html>

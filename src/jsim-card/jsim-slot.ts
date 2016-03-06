@@ -1,4 +1,4 @@
-import { ByteArray } from 'sim-core';
+import { ByteArray } from 'cryptographix-sim-core';
 
 import { Slot } from '../base/slot';
 import { CommandAPDU } from '../base/command-apdu';

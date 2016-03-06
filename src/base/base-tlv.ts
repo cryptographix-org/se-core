@@ -1,4 +1,4 @@
-import { ByteArray } from 'sim-core';
+import { ByteArray } from 'cryptographix-sim-core';
 
 export class BaseTLV
 {

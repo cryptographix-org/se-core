@@ -33,14 +33,14 @@ export class TLV
   {
     var info = BaseTLV.parseTLV( this.tlv.byteArray, this.encoding );
 
-    return new ByteString( this.tlv.byteArray.slice( info.lenOffset, info.valueOffset ) );
+    return new ByteString( this.tlv.byteArray.viewAt( info.lenOffset, info.valueOffset ) );
   }
 
   getLV()
   {
     var info = BaseTLV.parseTLV( this.tlv.byteArray, this.encoding );
 
-    return new ByteString( this.tlv.byteArray.slice( info.lenOffset, info.valueOffset + info.len ) );
+    return new ByteString( this.tlv.byteArray.viewAt( info.lenOffset, info.valueOffset + info.len ) );
   }
 
   static parseTLV( buffer: ByteString, encoding: number ): { tag: number, len: number, value: ByteString, lenOffset: number, valueOffset: number }

@@ -1,37 +1,18 @@
-import {  ByteArray, Kind, KindInfo } from 'sim-core';
+import {  ByteArray, Kind, KindBuilder, KindInfo } from 'cryptographix-sim-core';
 
 /**
  * Encoder/Decodor Kind for a APDU Command
  */
 export class CommandAPDU implements Kind
 {
-  /**
-   * @$kindInfo
-   */
-  private static $kindInfo: KindInfo = KindInfo.$kindHelper
-    .init( 'APDUCommand', 'ISO7816 Command APDU' )
-    .field( 'CLI', 'Class', 'string' )
-    .field( 'INS', 'Instruction', 'string' )
-    .field( 'P1', 'P1 Param', 'byte' )
-    .field( 'P2', 'P2 Param', 'byte' )
-    .field( 'Lc', 'Command Length', 'integer' )
-    .field( 'data', 'Command Data', 'bytearray' )
-    .field( 'Le', 'Expected Length', 'integer' )
-    .seal();
+  CLA: number; // = 0;
+  INS: number = 0;
+  P1: number = 0;
+  P2: number = 0;
+  data: ByteArray = new ByteArray();
+  Le: number = 0;
 
-  get kindInfo()
-  {
-    return CommandAPDU.$kindInfo;
-  }
-
-  properties = {
-    CLA: 0,
-    INS: 0,
-    P1: 0,
-    P2: 0,
-    data: undefined,
-    Le: 0
-  };
+//  static kindInfo: KindInfo;
 
   /**
    * @constructor
@@ -40,13 +21,11 @@ export class CommandAPDU implements Kind
    */
   constructor( attributes?: {} )
   {
-    if ( attributes )
-    {
-      for( let prop in this.properties )
-        if ( attributes[ prop ])
-          this.properties[ prop ] = attributes[prop];
-    }
+    Kind.initFields( this, attributes );
   }
+
+  public get Lc():number          { return this.data.length; }
+  public get header(): ByteArray  { return new ByteArray( [ this.CLA, this.INS, this.P1, this.P2 ] ); }
 
   /**
    * Fluent Builder
@@ -58,29 +37,36 @@ export class CommandAPDU implements Kind
 
   public set( CLA: number, INS: number, P1: number, P2: number, data?: ByteArray, expectedLen?: number ): CommandAPDU
   {
-    this.properties.CLA = CLA;
-    this.properties.INS = INS;
-    this.properties.P1 = P1;
-    this.properties.P2 = P2;
-    this.properties.data = data;
-    this.properties.Le = expectedLen;
+    this.CLA = CLA;
+    this.INS = INS;
+    this.P1 = P1;
+    this.P2 = P2;
+    this.data = data || new ByteArray();
+    this.Le = expectedLen || 0;
 
     return this;
   }
 
-  public setCLA( CLA: number ): CommandAPDU      { this.properties.CLA = CLA; return this; }
-  public setINS( INS: number ): CommandAPDU      { this.properties.INS = INS; return this; }
-  public setP1( P1: number ): CommandAPDU        { this.properties.P1 = P1; return this; }
-  public setP2( P2: number ): CommandAPDU        { this.properties.P2 = P2; return this; }
-  public setData( data: ByteArray ): CommandAPDU { this.properties.data = data; return this; }
-  public setLe( Le: number ): CommandAPDU        { this.properties.Le = Le; return this; }
+  public setCLA( CLA: number ): CommandAPDU      { this.CLA = CLA; return this; }
+  public setINS( INS: number ): CommandAPDU      { this.INS = INS; return this; }
+  public setP1( P1: number ): CommandAPDU        { this.P1 = P1; return this; }
+  public setP2( P2: number ): CommandAPDU        { this.P2 = P2; return this; }
+  public setData( data: ByteArray ): CommandAPDU { this.data = data; return this; }
+  public setLe( Le: number ): CommandAPDU        { this.Le = Le; return this; }
 
   /**
    * Serialization, returns a JSON object
    */
   public toJSON(): {}
   {
-    return this.properties;
+    return {
+      CLA: this.CLA,
+      INS: this.INS,
+      P1: this.P1,
+      P2: this.P2,
+      data: this.data,
+      Le: this.Le
+    };
   }
 
   /**
@@ -88,8 +74,22 @@ export class CommandAPDU implements Kind
    */
   public encodeBytes( options?: {} ): ByteArray
   {
-    //@ TODO: rebuild binary APDUCommand
-    return new ByteArray( [ this.properties.CLA, this.properties.INS, this.properties.P1, this.properties.P2 ] );
+    let dlen = ( ( this.Lc > 0 ) ? 1 + this.Lc : 0 );
+    let len = 4 + dlen + ( ( this.Le > 0 ) ? 1 : 0 );
+    let ba = new ByteArray().setLength( len );
+
+    // rebuild binary APDUCommand
+    ba.setBytesAt( 0, this.header );
+    if ( this.Lc ) {
+      ba.setByteAt( 4, this.Lc );
+      ba.setBytesAt( 5, this.data );
+    }
+
+    if ( this.Le > 0 ) {
+      ba.setByteAt( 4 + dlen, this.Le );
+    }
+
+    return ba;
   }
 
   /**
@@ -102,20 +102,20 @@ export class CommandAPDU implements Kind
 
     let offset = 0;
 
-    this.properties.CLA = byteArray.byteAt( offset++ );
-    this.properties.INS = byteArray.byteAt( offset++ );
-    this.properties.P1 = byteArray.byteAt( offset++ );
-    this.properties.P2 = byteArray.byteAt( offset++ );
+    this.CLA = byteArray.byteAt( offset++ );
+    this.INS = byteArray.byteAt( offset++ );
+    this.P1 = byteArray.byteAt( offset++ );
+    this.P2 = byteArray.byteAt( offset++ );
 
     if ( byteArray.length > offset + 1 )
     {
       var Lc = byteArray.byteAt( offset++ );
-      this.properties.data = byteArray.slice( offset, Lc );
+      this.data = byteArray.bytesAt( offset, Lc );
       offset += Lc;
     }
 
     if ( byteArray.length > offset )
-      this.properties.Le = byteArray.byteAt( offset++ );
+      this.Le = byteArray.byteAt( offset++ );
 
     if ( byteArray.length != offset )
       throw new Error( 'CommandAPDU: Invalid buffer' );
@@ -123,3 +123,13 @@ export class CommandAPDU implements Kind
     return this;
   }
 }
+
+KindBuilder.init( CommandAPDU, 'ISO7816 Command APDU' )
+  .byteField( 'CLA', 'Class' )
+  .byteField( 'INS', 'Instruction' )
+  .byteField( 'P1', 'P1 Param' )
+  .byteField( 'P2', 'P2 Param' )
+  .integerField( 'Lc', 'Command Length', { calculated: true } )
+  .field( 'data', 'Command Data', ByteArray )
+  .integerField( 'Le', 'Expected Length' )
+  ;

@@ -1,4 +1,4 @@
-import { ByteArray } from 'sim-core'; 
+import { ByteArray } from 'cryptographix-sim-core'; 
 import { CommandAPDU } from './command-apdu';
 import { ResponseAPDU } from './response-apdu';
 

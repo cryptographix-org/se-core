@@ -1,32 +1,16 @@
-import { ByteArray,Kind,KindInfo } from 'sim-core';
+import { ByteArray, Kind, KindInfo, KindBuilder } from 'cryptographix-sim-core';
 
 /**
  * Encoder/Decodor for a MULTOS Application Load Unit
  */
 export class ALU implements Kind
 {
-  /**
-   * @$kindInfo
-   */
-  private static $kindInfo: KindInfo = KindInfo.$kindHelper
-    .init( 'ALU', "MULTOS Application Load Unit" )
-    .field( "code", "Code Segment", "string" )
-    .field( "data", "Data Segment", "string" )
-    .field( "fci", "FCI Segment", "string" )
-    .field( "dir", "DIR Segment", "string" )
-    .seal();
+  static kindInfo: KindInfo;
 
-  get kindInfo()
-  {
-    return ALU.$kindInfo;
-  }
-
-  public properties = {
-    code: new ByteArray([]),
-    data: new ByteArray([]),
-    fci: new ByteArray([]),
-    dir: new ByteArray([])
-  };
+  code: ByteArray = new ByteArray();
+  data: ByteArray = new ByteArray();
+  fci: ByteArray = new ByteArray();
+  dir: ByteArray = new ByteArray();
 
   /**
    * @constructor
@@ -35,9 +19,9 @@ export class ALU implements Kind
   {
     if ( attributes )
     {
-      for( let prop in this.properties )
-        if ( attributes[ prop ])
-          this.properties[ prop ] = attributes[prop];
+      for( let field in ALU.kindInfo.fields )
+        if ( attributes[ field.id ] )
+          this[ field.id ] = attributes[ field.id ];
     }
   }
 
@@ -46,7 +30,12 @@ export class ALU implements Kind
    */
   public toJSON(): {}
   {
-    return this.properties;
+    return {
+      code: this.code,
+      data: this.data,
+      fci: this.fci,
+      dir: this.dir
+    };
   }
 
   private getALUSegment( bytes: ByteArray, segmentID: number )
@@ -59,7 +48,7 @@ export class ALU implements Kind
       --segmentID;
     }
 
-    return bytes.slice( offset + 2, bytes.wordAt( offset ) );
+    return bytes.viewAt( offset + 2, bytes.wordAt( offset ) );
   }
 
   /**
@@ -67,10 +56,10 @@ export class ALU implements Kind
    */
   public decodeBytes( bytes: ByteArray, options?: Object ): ALU
   {
-    this.properties.code = this.getALUSegment( bytes, 1 );
-    this.properties.data = this.getALUSegment( bytes, 2 );
-    this.properties.dir = this.getALUSegment( bytes, 3 );
-    this.properties.fci = this.getALUSegment( bytes, 4 );
+    this.code = this.getALUSegment( bytes, 1 );
+    this.data = this.getALUSegment( bytes, 2 );
+    this.dir = this.getALUSegment( bytes, 3 );
+    this.fci = this.getALUSegment( bytes, 4 );
 
     return this;
   }
@@ -84,3 +73,10 @@ export class ALU implements Kind
     return new ByteArray( [] );
   }
 }
+
+KindBuilder.init( ALU, "MULTOS Application Load Unit" )
+  .field( "code", "Code Segment", ByteArray )
+  .field( "data", "Data Segment", ByteArray )
+  .field( "fci", "FCI Segment", ByteArray )
+  .field( "dir", "DIR Segment", ByteArray )
+  ;

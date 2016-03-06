@@ -1,4 +1,4 @@
-import { ByteArray } from 'sim-core';
+import { ByteArray } from 'cryptographix-sim-core';
 import { ByteString } from './byte-string';
 import { ByteBuffer } from './byte-buffer';
 import { Key } from './key';
@@ -20,7 +20,7 @@ export class Crypto
       k = new ByteArray( [] ).setLength( 24 );
 
       k.setBytesAt( 0, orig );
-      k.setBytesAt( 16, orig.slice( 0, 8 ) );
+      k.setBytesAt( 16, orig.viewAt( 0, 8 ) );
     }
 
     var cryptoText = new ByteBuffer( this.des( k.backingArray, data.byteArray.backingArray, 1, 0 ) );

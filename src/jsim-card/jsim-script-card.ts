@@ -1,4 +1,4 @@
-import { ByteArray } from 'sim-core';
+import { ByteArray } from 'cryptographix-sim-core';
 
 import { ISO7816 } from '../base/ISO7816';
 import { CommandAPDU } from '../base/command-apdu';
@@ -35,7 +35,7 @@ export class JSIMScriptCard implements JSIMCard
   {
     this.powerIsOn = true;
 
-    return Promise.resolve( this.atr );
+    return Promise.resolve<ByteArray>( this.atr );
   }
 
   powerOff(): Promise<any>
@@ -44,7 +44,7 @@ export class JSIMScriptCard implements JSIMCard
 
     this.selectedApplet = undefined;
 
-    return Promise.resolve(  );
+    return Promise.resolve();
   }
 
   reset(): Promise<ByteArray>
@@ -55,12 +55,12 @@ export class JSIMScriptCard implements JSIMCard
 
     // TODO: Reset
 
-    return Promise.resolve( this.atr );
+    return Promise.resolve<ByteArray>( this.atr );
   }
 
   exchangeAPDU( commandAPDU: CommandAPDU ): Promise<ResponseAPDU>
   {
-    if ( commandAPDU.properties.INS == 0xA4 )
+    if ( commandAPDU.INS == 0xA4 )
     {
       if ( this.selectedApplet )
       {
