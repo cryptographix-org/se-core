@@ -9,16 +9,16 @@ import { JSIMScriptApplet } from './jsim-script-applet';
 
 export class JSIMScriptCard implements JSIMCard
 {
-  private powerIsOn: boolean;
-  private atr: ByteArray;
+  private _powerIsOn: boolean;
+  private _atr: ByteArray;
 
-  applets: { aid: ByteArray, applet: JSIMScriptApplet }[];
+  applets: { aid: ByteArray, applet: JSIMScriptApplet }[] = [];
 
   selectedApplet: JSIMScriptApplet;
 
   constructor()
   {
-    this.atr = new ByteArray( [] );
+    this._atr = new ByteArray( [] );
   }
 
   loadApplication( aid: ByteArray, applet: JSIMScriptApplet )
@@ -28,19 +28,19 @@ export class JSIMScriptCard implements JSIMCard
 
   get isPowered(): boolean
   {
-    return this.powerIsOn;
+    return this._powerIsOn;
   }
 
   powerOn(): Promise<ByteArray>
   {
-    this.powerIsOn = true;
+    this._powerIsOn = true;
 
-    return Promise.resolve<ByteArray>( this.atr );
+    return Promise.resolve<ByteArray>( this._atr );
   }
 
   powerOff(): Promise<any>
   {
-    this.powerIsOn = false;
+    this._powerIsOn = false;
 
     this.selectedApplet = undefined;
 
@@ -49,13 +49,13 @@ export class JSIMScriptCard implements JSIMCard
 
   reset(): Promise<ByteArray>
   {
-    this.powerIsOn = true;
+    this._powerIsOn = true;
 
     this.selectedApplet = undefined;
 
     // TODO: Reset
 
-    return Promise.resolve<ByteArray>( this.atr );
+    return Promise.resolve<ByteArray>( this._atr );
   }
 
   exchangeAPDU( commandAPDU: CommandAPDU ): Promise<ResponseAPDU>

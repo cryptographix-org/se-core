@@ -5,19 +5,19 @@ export class ByteBuffer
 {
   byteArray: ByteArray;
 
-  constructor ( value?, encoding? )
+  constructor ( value?: ByteArray | ByteString | string, encoding? )
   {
     if ( value instanceof ByteArray )
     {
-      this.byteArray = value;
+      this.byteArray = value.clone();
     }
     else if ( value instanceof ByteString )
     {
-      this.byteArray = value.bytes;
+      this.byteArray = value.byteArray.clone();
     }
     else if ( encoding != undefined )
     {
-      this.byteArray = new ByteString( value, encoding ).byteArray;
+      this.byteArray = new ByteString( value, encoding ).byteArray.clone();
     }
     else
       this.byteArray = new ByteArray( [] );

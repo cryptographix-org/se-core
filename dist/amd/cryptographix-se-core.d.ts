@@ -179,11 +179,12 @@ declare module 'cryptographix-se-core'
   }
 
 
+
   export class Crypto {
       constructor();
-      encrypt(key: any, mech: any, data: ByteString): ByteString;
+      encrypt(key: Key, mech: any, data: ByteString): ByteString;
       decrypt(key: any, mech: any, data: any): any;
-      sign(key: any, mech: any, data: any, iv?: any): ByteString;
+      sign(key: Key, mech: any, data: ByteString, iv?: any): ByteString;
       static desPC: any;
       static desSP: any;
       private des(key, message, encrypt, mode, iv?, padding?);
@@ -225,7 +226,7 @@ declare module 'cryptographix-se-core'
 
   export class ByteBuffer {
       byteArray: ByteArray;
-      constructor(value?: any, encoding?: any);
+      constructor(value?: ByteArray | ByteString | string, encoding?: any);
       length: number;
       toByteString(): ByteString;
       clear(): void;
@@ -286,8 +287,8 @@ declare module 'cryptographix-se-core'
 
 
   export class JSIMScriptCard implements JSIMCard {
-      private powerIsOn;
-      private atr;
+      private _powerIsOn;
+      private _atr;
       applets: {
           aid: ByteArray;
           applet: JSIMScriptApplet;

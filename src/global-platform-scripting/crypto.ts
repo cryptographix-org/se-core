@@ -9,7 +9,7 @@ export class Crypto
   {
   }
 
-  encrypt( key, mech, data: ByteString )
+  encrypt( key: Key, mech, data: ByteString ): ByteString
   {
     var k: ByteArray = key.getComponent( Key.SECRET ).byteArray;
 
@@ -23,9 +23,9 @@ export class Crypto
       k.setBytesAt( 16, orig.viewAt( 0, 8 ) );
     }
 
-    var cryptoText = new ByteBuffer( this.des( k.backingArray, data.byteArray.backingArray, 1, 0 ) );
+    var cryptoText = new ByteArray( this.des( k.backingArray, data.byteArray.backingArray, 1, 0 ) );
 
-    return cryptoText.toByteString();
+    return new ByteString( cryptoText );
   }
 
   decrypt( key, mech, data )
@@ -33,18 +33,20 @@ export class Crypto
     return data;
   }
 
-  sign( key, mech, data, iv? )
+  sign( key: Key, mech, data: ByteString, iv? ): ByteString
   {
-    var k = key.getComponent( Key.SECRET )._bytes;
+    var k = key.getComponent( Key.SECRET ).byteArray;
 
     var keyData = k;
 
     if ( k.length == 16 )  // 3DES Double -> Triple
     {
-      keyData = new Uint8Array( 24 );
+      keyData = new ByteArray();
 
-      keyData.set( k, 0 );
-      keyData.set( k.subarray( 0, 8 ), 16 );
+      keyData
+        .setLength( 24 )
+        .setBytesAt( 0, k )
+        .setBytesAt( 16, k.bytesAt( 0, 8 ) );
     }
 
     if ( iv == undefined )
@@ -52,9 +54,9 @@ export class Crypto
 
     // function( key, message, encrypt, mode, iv, padding )
     // mode=1 CBC, padding=4 no-pad
-    var cryptoText = new ByteBuffer( this.des( keyData, data._bytes, 1, 1, iv, 4 ) );
+    var cryptoText = new ByteArray( this.des( keyData.backingArray, data.byteArray.backingArray, 1, 1, iv, 4 ) );
 
-    return cryptoText.toByteString().bytes( -8 );
+    return new ByteString( cryptoText ).bytes( -8 );
   }
 
   static desPC;

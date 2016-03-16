@@ -677,8 +677,8 @@ System.register(['cryptographix-sim-core'], function (_export) {
                         k.setBytesAt(0, orig);
                         k.setBytesAt(16, orig.viewAt(0, 8));
                     }
-                    var cryptoText = new ByteBuffer(this.des(k.backingArray, data.byteArray.backingArray, 1, 0));
-                    return cryptoText.toByteString();
+                    var cryptoText = new ByteArray(this.des(k.backingArray, data.byteArray.backingArray, 1, 0));
+                    return new ByteString(cryptoText);
                 };
 
                 Crypto.prototype.decrypt = function decrypt(key, mech, data) {
@@ -686,16 +686,15 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 };
 
                 Crypto.prototype.sign = function sign(key, mech, data, iv) {
-                    var k = key.getComponent(Key.SECRET)._bytes;
+                    var k = key.getComponent(Key.SECRET).byteArray;
                     var keyData = k;
                     if (k.length == 16) {
-                        keyData = new Uint8Array(24);
-                        keyData.set(k, 0);
-                        keyData.set(k.subarray(0, 8), 16);
+                        keyData = new ByteArray();
+                        keyData.setLength(24).setBytesAt(0, k).setBytesAt(16, k.bytesAt(0, 8));
                     }
                     if (iv == undefined) iv = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-                    var cryptoText = new ByteBuffer(this.des(keyData, data._bytes, 1, 1, iv, 4));
-                    return cryptoText.toByteString().bytes(-8);
+                    var cryptoText = new ByteArray(this.des(keyData.backingArray, data.byteArray.backingArray, 1, 1, iv, 4));
+                    return new ByteString(cryptoText).bytes(-8);
                 };
 
                 Crypto.prototype.des = function des(key, message, encrypt, mode, iv, padding) {
@@ -1023,11 +1022,11 @@ System.register(['cryptographix-sim-core'], function (_export) {
                     _classCallCheck(this, ByteBuffer);
 
                     if (value instanceof ByteArray) {
-                        this.byteArray = value;
+                        this.byteArray = value.clone();
                     } else if (value instanceof ByteString) {
-                        this.byteArray = value.bytes;
+                        this.byteArray = value.byteArray.clone();
                     } else if (encoding != undefined) {
-                        this.byteArray = new ByteString(value, encoding).byteArray;
+                        this.byteArray = new ByteString(value, encoding).byteArray.clone();
                     } else this.byteArray = new ByteArray([]);
                 }
 
@@ -1211,7 +1210,8 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 function JSIMScriptCard() {
                     _classCallCheck(this, JSIMScriptCard);
 
-                    this.atr = new ByteArray([]);
+                    this.applets = [];
+                    this._atr = new ByteArray([]);
                 }
 
                 JSIMScriptCard.prototype.loadApplication = function loadApplication(aid, applet) {
@@ -1219,20 +1219,20 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 };
 
                 JSIMScriptCard.prototype.powerOn = function powerOn() {
-                    this.powerIsOn = true;
-                    return Promise.resolve(this.atr);
+                    this._powerIsOn = true;
+                    return Promise.resolve(this._atr);
                 };
 
                 JSIMScriptCard.prototype.powerOff = function powerOff() {
-                    this.powerIsOn = false;
+                    this._powerIsOn = false;
                     this.selectedApplet = undefined;
                     return Promise.resolve();
                 };
 
                 JSIMScriptCard.prototype.reset = function reset() {
-                    this.powerIsOn = true;
+                    this._powerIsOn = true;
                     this.selectedApplet = undefined;
-                    return Promise.resolve(this.atr);
+                    return Promise.resolve(this._atr);
                 };
 
                 JSIMScriptCard.prototype.exchangeAPDU = function exchangeAPDU(commandAPDU) {
@@ -1250,7 +1250,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 _createClass(JSIMScriptCard, [{
                     key: 'isPowered',
                     get: function get() {
-                        return this.powerIsOn;
+                        return this._powerIsOn;
                     }
                 }]);
 

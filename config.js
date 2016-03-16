@@ -8,7 +8,7 @@ System.config({
   },
 
   map: {
-    "cryptographix-sim-core": "npm:cryptographix-sim-core@0.1.5",
+    "cryptographix-sim-core": "npm:cryptographix-sim-core@0.2.0-devel",
     "github:jspm/nodelibs-assert@0.1.0": {
       "assert": "npm:assert@1.3.0"
     },
@@ -38,7 +38,7 @@ System.config({
     "npm:colors@1.1.2": {
       "process": "github:jspm/nodelibs-process@0.1.2"
     },
-    "npm:cryptographix-sim-core@0.1.5": {
+    "npm:cryptographix-sim-core@0.2.0-devel": {
       "aurelia-dependency-injection": "npm:aurelia-dependency-injection@1.0.0-beta.1.1.5",
       "aurelia-event-aggregator": "npm:aurelia-event-aggregator@1.0.0-beta.1.1.1",
       "jasmine-core": "npm:jasmine-core@2.4.1",

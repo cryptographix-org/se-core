@@ -1,6 +1,6 @@
 {
   "name": "cryptographix-se-core",
-  "version": "0.1.1",
+  "version": "0.2.0-devel",
   "description": "Secure Element and Smartcard simulation core classes",
   "keywords": [
     "cryptographic",
@@ -29,7 +29,7 @@
       "lib": "dist/amd"
     },
     "dependencies": {
-      "cryptographix-sim-core": "^0.1.5"
+      "cryptographix-sim-core": "0.2.0-devel"
     },
     "devDependencies": {}
   },
