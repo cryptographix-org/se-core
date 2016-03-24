@@ -372,7 +372,7 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
             var response = undefined;
             switch (hdr.method) {
                 case "executeAPDU":
-                    if (!(hdr.kind instanceof CommandAPDU)) break;
+                    if (!(payload instanceof CommandAPDU)) break;
                     response = this.slot.executeAPDU(payload);
                     response.then(function (responseAPDU) {
                         var replyPacket = new _cryptographixSimCore.Message({ method: "executeAPDU" }, responseAPDU);
@@ -380,12 +380,20 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
                     });
                     break;
                 case "powerOff":
+                    response = this.slot.powerOff().then(function (respData) {
+                        receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, new _cryptographixSimCore.ByteArray()));
+                    });
+                    break;
                 case "powerOn":
-                case "reset":
-                    if (hdr.method == 'reset') response = this.slot.reset();else if (hdr.method == 'powerOn') response = this.slot.powerOn();else response = this.slot.powerOff();
-                    response.then(function (respData) {
+                    response = this.slot.powerOn().then(function (respData) {
                         receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, respData));
                     });
+                    break;
+                case "reset":
+                    response = this.slot.reset().then(function (respData) {
+                        receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, respData));
+                    });
+                    break;
                 default:
                     response = Promise.reject(new Error("Invalid method" + hdr.method));
                     break;
@@ -400,185 +408,6 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
     })();
 
     exports.SlotProtocolHandler = SlotProtocolHandler;
-
-    var JSSimulatedSlot = (function () {
-        function JSSimulatedSlot() {
-            _classCallCheck(this, JSSimulatedSlot);
-        }
-
-        JSSimulatedSlot.prototype.OnMessage = function OnMessage(e) {
-            if (this.stop) return;
-            if (e.data.command == "debug") {
-                console.log(e.data.data);
-            } else if (e.data.command == "executeAPDU") {
-                if (this.onAPDUResponse) {
-                    var bs = e.data.data,
-                        len = bs.length;
-                    this.onAPDUResponse(bs[len - 2] << 8 | bs[len - 1], len > 2 ? new _cryptographixSimCore.ByteArray(bs.subarray(0, len - 2)) : null);
-                }
-            } else {
-                console.log("cmd: " + e.data.command + " data: " + e.data.data);
-            }
-        };
-
-        JSSimulatedSlot.prototype.init = function init() {
-            this.cardWorker = new Worker("js/SmartCardSlotSimulator/SmartCardSlotWorker.js");
-            this.cardWorker.onmessage = this.OnMessage.bind(this);
-            this.cardWorker.onerror = function (e) {};
-        };
-
-        JSSimulatedSlot.prototype.sendToWorker = function sendToWorker(command, data) {
-            this.cardWorker.postMessage({
-                "command": command,
-                "data": data
-            });
-        };
-
-        JSSimulatedSlot.prototype.executeAPDUCommand = function executeAPDUCommand(bCLA, bINS, bP1, bP2, commandData, wLe, onAPDUResponse) {
-            var cmd = [bCLA, bINS, bP1, bP2];
-            var len = 4;
-            var bsCommandData = commandData instanceof _cryptographixSimCore.ByteArray ? commandData : new _cryptographixSimCore.ByteArray(commandData, _cryptographixSimCore.ByteArray.HEX);
-            if (bsCommandData.length > 0) {
-                cmd[len++] = bsCommandData.length;
-                for (var i = 0; i < bsCommandData.length; ++i) cmd[len++] = bsCommandData.byteAt(i);
-            } else if (wLe != undefined) cmd[len++] = wLe & 0xFF;
-            this.sendToWorker("executeAPDU", cmd);
-            this.onAPDUResponse = onAPDUResponse;
-            return;
-        };
-
-        return JSSimulatedSlot;
-    })();
-
-    var JSIMScriptApplet = (function () {
-        function JSIMScriptApplet() {
-            _classCallCheck(this, JSIMScriptApplet);
-        }
-
-        JSIMScriptApplet.prototype.selectApplication = function selectApplication(commandAPDU) {
-            return Promise.resolve(new ResponseAPDU({ sw: 0x9000 }));
-        };
-
-        JSIMScriptApplet.prototype.deselectApplication = function deselectApplication() {};
-
-        JSIMScriptApplet.prototype.executeAPDU = function executeAPDU(commandAPDU) {
-            return Promise.resolve(new ResponseAPDU({ sw: 0x6D00 }));
-        };
-
-        return JSIMScriptApplet;
-    })();
-
-    exports.JSIMScriptApplet = JSIMScriptApplet;
-
-    var JSIMScriptCard = (function () {
-        function JSIMScriptCard() {
-            _classCallCheck(this, JSIMScriptCard);
-
-            this.applets = [];
-            this._atr = new _cryptographixSimCore.ByteArray([]);
-        }
-
-        JSIMScriptCard.prototype.loadApplication = function loadApplication(aid, applet) {
-            this.applets.push({ aid: aid, applet: applet });
-        };
-
-        JSIMScriptCard.prototype.powerOn = function powerOn() {
-            this._powerIsOn = true;
-            return Promise.resolve(this._atr);
-        };
-
-        JSIMScriptCard.prototype.powerOff = function powerOff() {
-            this._powerIsOn = false;
-            this.selectedApplet = undefined;
-            return Promise.resolve();
-        };
-
-        JSIMScriptCard.prototype.reset = function reset() {
-            this._powerIsOn = true;
-            this.selectedApplet = undefined;
-            return Promise.resolve(this._atr);
-        };
-
-        JSIMScriptCard.prototype.exchangeAPDU = function exchangeAPDU(commandAPDU) {
-            if (commandAPDU.INS == 0xA4) {
-                if (this.selectedApplet) {
-                    this.selectedApplet.deselectApplication();
-                    this.selectedApplet = undefined;
-                }
-                this.selectedApplet = this.applets[0].applet;
-                return this.selectedApplet.selectApplication(commandAPDU);
-            }
-            return this.selectedApplet.executeAPDU(commandAPDU);
-        };
-
-        _createClass(JSIMScriptCard, [{
-            key: 'isPowered',
-            get: function get() {
-                return this._powerIsOn;
-            }
-        }]);
-
-        return JSIMScriptCard;
-    })();
-
-    exports.JSIMScriptCard = JSIMScriptCard;
-
-    var JSIMSlot = (function () {
-        function JSIMSlot(card) {
-            _classCallCheck(this, JSIMSlot);
-
-            this.card = card;
-        }
-
-        JSIMSlot.prototype.powerOn = function powerOn() {
-            if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
-            return this.card.powerOn();
-        };
-
-        JSIMSlot.prototype.powerOff = function powerOff() {
-            if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
-            return this.card.powerOff();
-        };
-
-        JSIMSlot.prototype.reset = function reset() {
-            if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
-            return this.card.reset();
-        };
-
-        JSIMSlot.prototype.executeAPDU = function executeAPDU(commandAPDU) {
-            if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
-            if (!this.isPowered) return Promise.reject(new Error("JSIM: Card unpowered"));
-            return this.card.exchangeAPDU(commandAPDU);
-        };
-
-        JSIMSlot.prototype.insertCard = function insertCard(card) {
-            if (this.card) this.ejectCard();
-            this.card = card;
-        };
-
-        JSIMSlot.prototype.ejectCard = function ejectCard() {
-            if (this.card) {
-                if (this.card.isPowered) this.card.powerOff();
-                this.card = undefined;
-            }
-        };
-
-        _createClass(JSIMSlot, [{
-            key: 'isPresent',
-            get: function get() {
-                return !!this.card;
-            }
-        }, {
-            key: 'isPowered',
-            get: function get() {
-                return this.isPresent && this.card.isPowered;
-            }
-        }]);
-
-        return JSIMSlot;
-    })();
-
-    exports.JSIMSlot = JSIMSlot;
 
     var Key = (function () {
         function Key() {
@@ -1101,6 +930,185 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
     })();
 
     exports.TLVList = TLVList;
+
+    var JSSimulatedSlot = (function () {
+        function JSSimulatedSlot() {
+            _classCallCheck(this, JSSimulatedSlot);
+        }
+
+        JSSimulatedSlot.prototype.OnMessage = function OnMessage(e) {
+            if (this.stop) return;
+            if (e.data.command == "debug") {
+                console.log(e.data.data);
+            } else if (e.data.command == "executeAPDU") {
+                if (this.onAPDUResponse) {
+                    var bs = e.data.data,
+                        len = bs.length;
+                    this.onAPDUResponse(bs[len - 2] << 8 | bs[len - 1], len > 2 ? new _cryptographixSimCore.ByteArray(bs.subarray(0, len - 2)) : null);
+                }
+            } else {
+                console.log("cmd: " + e.data.command + " data: " + e.data.data);
+            }
+        };
+
+        JSSimulatedSlot.prototype.init = function init() {
+            this.cardWorker = new Worker("js/SmartCardSlotSimulator/SmartCardSlotWorker.js");
+            this.cardWorker.onmessage = this.OnMessage.bind(this);
+            this.cardWorker.onerror = function (e) {};
+        };
+
+        JSSimulatedSlot.prototype.sendToWorker = function sendToWorker(command, data) {
+            this.cardWorker.postMessage({
+                "command": command,
+                "data": data
+            });
+        };
+
+        JSSimulatedSlot.prototype.executeAPDUCommand = function executeAPDUCommand(bCLA, bINS, bP1, bP2, commandData, wLe, onAPDUResponse) {
+            var cmd = [bCLA, bINS, bP1, bP2];
+            var len = 4;
+            var bsCommandData = commandData instanceof _cryptographixSimCore.ByteArray ? commandData : new _cryptographixSimCore.ByteArray(commandData, _cryptographixSimCore.ByteArray.HEX);
+            if (bsCommandData.length > 0) {
+                cmd[len++] = bsCommandData.length;
+                for (var i = 0; i < bsCommandData.length; ++i) cmd[len++] = bsCommandData.byteAt(i);
+            } else if (wLe != undefined) cmd[len++] = wLe & 0xFF;
+            this.sendToWorker("executeAPDU", cmd);
+            this.onAPDUResponse = onAPDUResponse;
+            return;
+        };
+
+        return JSSimulatedSlot;
+    })();
+
+    var JSIMScriptApplet = (function () {
+        function JSIMScriptApplet() {
+            _classCallCheck(this, JSIMScriptApplet);
+        }
+
+        JSIMScriptApplet.prototype.selectApplication = function selectApplication(commandAPDU) {
+            return Promise.resolve(new ResponseAPDU({ sw: 0x9000 }));
+        };
+
+        JSIMScriptApplet.prototype.deselectApplication = function deselectApplication() {};
+
+        JSIMScriptApplet.prototype.executeAPDU = function executeAPDU(commandAPDU) {
+            return Promise.resolve(new ResponseAPDU({ sw: 0x6D00 }));
+        };
+
+        return JSIMScriptApplet;
+    })();
+
+    exports.JSIMScriptApplet = JSIMScriptApplet;
+
+    var JSIMScriptCard = (function () {
+        function JSIMScriptCard() {
+            _classCallCheck(this, JSIMScriptCard);
+
+            this.applets = [];
+            this._atr = new _cryptographixSimCore.ByteArray([]);
+        }
+
+        JSIMScriptCard.prototype.loadApplication = function loadApplication(aid, applet) {
+            this.applets.push({ aid: aid, applet: applet });
+        };
+
+        JSIMScriptCard.prototype.powerOn = function powerOn() {
+            this._powerIsOn = true;
+            return Promise.resolve(this._atr);
+        };
+
+        JSIMScriptCard.prototype.powerOff = function powerOff() {
+            this._powerIsOn = false;
+            this.selectedApplet = undefined;
+            return Promise.resolve();
+        };
+
+        JSIMScriptCard.prototype.reset = function reset() {
+            this._powerIsOn = true;
+            this.selectedApplet = undefined;
+            return Promise.resolve(this._atr);
+        };
+
+        JSIMScriptCard.prototype.exchangeAPDU = function exchangeAPDU(commandAPDU) {
+            if (commandAPDU.INS == 0xA4) {
+                if (this.selectedApplet) {
+                    this.selectedApplet.deselectApplication();
+                    this.selectedApplet = undefined;
+                }
+                this.selectedApplet = this.applets[0].applet;
+                return this.selectedApplet.selectApplication(commandAPDU);
+            }
+            return this.selectedApplet.executeAPDU(commandAPDU);
+        };
+
+        _createClass(JSIMScriptCard, [{
+            key: 'isPowered',
+            get: function get() {
+                return this._powerIsOn;
+            }
+        }]);
+
+        return JSIMScriptCard;
+    })();
+
+    exports.JSIMScriptCard = JSIMScriptCard;
+
+    var JSIMSlot = (function () {
+        function JSIMSlot(card) {
+            _classCallCheck(this, JSIMSlot);
+
+            this.card = card;
+        }
+
+        JSIMSlot.prototype.powerOn = function powerOn() {
+            if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
+            return this.card.powerOn();
+        };
+
+        JSIMSlot.prototype.powerOff = function powerOff() {
+            if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
+            return this.card.powerOff();
+        };
+
+        JSIMSlot.prototype.reset = function reset() {
+            if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
+            return this.card.reset();
+        };
+
+        JSIMSlot.prototype.executeAPDU = function executeAPDU(commandAPDU) {
+            if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
+            if (!this.isPowered) return Promise.reject(new Error("JSIM: Card unpowered"));
+            return this.card.exchangeAPDU(commandAPDU);
+        };
+
+        JSIMSlot.prototype.insertCard = function insertCard(card) {
+            if (this.card) this.ejectCard();
+            this.card = card;
+        };
+
+        JSIMSlot.prototype.ejectCard = function ejectCard() {
+            if (this.card) {
+                if (this.card.isPowered) this.card.powerOff();
+                this.card = undefined;
+            }
+        };
+
+        _createClass(JSIMSlot, [{
+            key: 'isPresent',
+            get: function get() {
+                return !!this.card;
+            }
+        }, {
+            key: 'isPowered',
+            get: function get() {
+                return this.isPresent && this.card.isPowered;
+            }
+        }]);
+
+        return JSIMSlot;
+    })();
+
+    exports.JSIMSlot = JSIMSlot;
 
     function hex2(val) {
         return ("00" + val.toString(16).toUpperCase()).substr(-2);

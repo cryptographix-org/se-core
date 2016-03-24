@@ -1,23 +1,23 @@
-System.register(['cryptographix-sim-core'], function (_export) {
-    'use strict';
+System.register(["cryptographix-sim-core"], function (_export) {
+    "use strict";
 
-    var ByteArray, Kind, KindBuilder, Message, ByteEncoding, BaseTLV, CommandAPDU, ISO7816, ResponseAPDU, SlotProtocolHandler, Key, Crypto, ByteString, HEX, BASE64, ByteBuffer, TLV, TLVList, JSSimulatedSlot, JSIMScriptApplet, JSIMScriptCard, JSIMSlot, MEMFLAGS, Segment, Accessor, MemoryManager, MELINST, MELTAGADDR, MELTAGCOND, MELTAGSYSTEM, MELTAGSTACK, MELTAGPRIMRET, MELPARAMDEF, MEL, MELDecode, MEL_CCR_Z, MEL_CCR_C, MELVirtualMachine, JSIMMultosApplet, JSIMMultosCard, setZeroPrimitives, setOnePrimitives, setTwoPrimitives, setThreePrimitives, primitiveSets, SecurityManager, ADC, ALC, ALU;
+    var ByteArray, ByteEncoding, Kind, KindBuilder, Message, Key, Crypto, ByteString, HEX, BASE64, ByteBuffer, BaseTLV, TLV, TLVList, CommandAPDU, ISO7816, ResponseAPDU, SlotProtocolHandler, JSSimulatedSlot, JSIMScriptApplet, JSIMScriptCard, JSIMSlot, MEMFLAGS, Segment, Accessor, MemoryManager, MELINST, MELTAGADDR, MELTAGCOND, MELTAGSYSTEM, MELTAGSTACK, MELTAGPRIMRET, MELPARAMDEF, MEL, MELDecode, MEL_CCR_Z, MEL_CCR_C, MELVirtualMachine, JSIMMultosApplet, JSIMMultosCard, setZeroPrimitives, setOnePrimitives, setTwoPrimitives, setThreePrimitives, primitiveSets, SecurityManager, ADC, ALC, ALU;
 
-    var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+    var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-    _export('hex2', hex2);
+    _export("hex2", hex2);
 
-    _export('hex4', hex4);
+    _export("hex4", hex4);
 
-    _export('MEL2OPCODE', MEL2OPCODE);
+    _export("MEL2OPCODE", MEL2OPCODE);
 
-    _export('MEL2INST', MEL2INST);
+    _export("MEL2INST", MEL2INST);
 
-    _export('MEL2TAG', MEL2TAG);
+    _export("MEL2TAG", MEL2TAG);
 
-    _export('callPrimitive', callPrimitive);
+    _export("callPrimitive", callPrimitive);
 
-    function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+    function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
     function hex2(val) {
         return ("00" + val.toString(16).toUpperCase()).substr(-2);
@@ -229,399 +229,12 @@ System.register(['cryptographix-sim-core'], function (_export) {
     return {
         setters: [function (_cryptographixSimCore) {
             ByteArray = _cryptographixSimCore.ByteArray;
+            ByteEncoding = _cryptographixSimCore.ByteEncoding;
             Kind = _cryptographixSimCore.Kind;
             KindBuilder = _cryptographixSimCore.KindBuilder;
             Message = _cryptographixSimCore.Message;
-            ByteEncoding = _cryptographixSimCore.ByteEncoding;
         }],
         execute: function () {
-            BaseTLV = (function () {
-                function BaseTLV(tag, value, encoding) {
-                    _classCallCheck(this, BaseTLV);
-
-                    this.encoding = encoding || BaseTLV.Encodings.EMV;
-                    switch (this.encoding) {
-                        case BaseTLV.Encodings.EMV:
-                            {
-                                var tlvBuffer = new ByteArray([]);
-                                if (tag >= 0x100) tlvBuffer.addByte(tag >> 8 & 0xFF);
-                                tlvBuffer.addByte(tag & 0xFF);
-                                var len = value.length;
-                                if (len > 0xFF) {
-                                    tlvBuffer.addByte(0x82);
-                                    tlvBuffer.addByte(len >> 8 & 0xFF);
-                                } else if (len > 0x7F) tlvBuffer.addByte(0x81);
-                                tlvBuffer.addByte(len & 0xFF);
-                                tlvBuffer.concat(value);
-                                this.byteArray = tlvBuffer;
-                                break;
-                            }
-                    }
-                }
-
-                BaseTLV.parseTLV = function parseTLV(buffer, encoding) {
-                    var res = { tag: 0, len: 0, value: undefined, lenOffset: 0, valueOffset: 0 };
-                    var off = 0;
-                    var bytes = buffer.backingArray;
-                    switch (encoding) {
-                        case BaseTLV.Encodings.EMV:
-                            {
-                                while (off < bytes.length && (bytes[off] == 0x00 || bytes[off] == 0xFF)) ++off;
-                                if (off >= bytes.length) return res;
-                                if ((bytes[off] & 0x1F) == 0x1F) {
-                                    res.tag = bytes[off++] << 8;
-                                    if (off >= bytes.length) {
-                                        return null;
-                                    }
-                                }
-                                res.tag |= bytes[off++];
-                                res.lenOffset = off;
-                                if (off >= bytes.length) {
-                                    return null;
-                                }
-                                var ll = bytes[off] & 0x80 ? bytes[off++] & 0x7F : 1;
-                                while (ll-- > 0) {
-                                    if (off >= bytes.length) {
-                                        return null;
-                                    }
-                                    res.len = res.len << 8 | bytes[off++];
-                                }
-                                res.valueOffset = off;
-                                if (off + res.len > bytes.length) {
-                                    return null;
-                                }
-                                res.value = bytes.slice(res.valueOffset, res.valueOffset + res.len);
-                                break;
-                            }
-                    }
-                    return res;
-                };
-
-                _createClass(BaseTLV, [{
-                    key: 'tag',
-                    get: function get() {
-                        return BaseTLV.parseTLV(this.byteArray, this.encoding).tag;
-                    }
-                }, {
-                    key: 'value',
-                    get: function get() {
-                        return BaseTLV.parseTLV(this.byteArray, this.encoding).value;
-                    }
-                }, {
-                    key: 'len',
-                    get: function get() {
-                        return BaseTLV.parseTLV(this.byteArray, this.encoding).len;
-                    }
-                }]);
-
-                return BaseTLV;
-            })();
-
-            _export('BaseTLV', BaseTLV);
-
-            BaseTLV.Encodings = {
-                EMV: 1,
-                DGI: 2
-            };
-            BaseTLV.Encodings["CTV"] = 4;
-
-            CommandAPDU = (function () {
-                function CommandAPDU(attributes) {
-                    _classCallCheck(this, CommandAPDU);
-
-                    this.INS = 0;
-                    this.P1 = 0;
-                    this.P2 = 0;
-                    this.data = new ByteArray();
-                    this.Le = 0;
-                    Kind.initFields(this, attributes);
-                }
-
-                CommandAPDU.init = function init(CLA, INS, P1, P2, data, expectedLen) {
-                    return new CommandAPDU().set(CLA, INS, P1, P2, data, expectedLen);
-                };
-
-                CommandAPDU.prototype.set = function set(CLA, INS, P1, P2, data, expectedLen) {
-                    this.CLA = CLA;
-                    this.INS = INS;
-                    this.P1 = P1;
-                    this.P2 = P2;
-                    this.data = data || new ByteArray();
-                    this.Le = expectedLen || 0;
-                    return this;
-                };
-
-                CommandAPDU.prototype.setCLA = function setCLA(CLA) {
-                    this.CLA = CLA;return this;
-                };
-
-                CommandAPDU.prototype.setINS = function setINS(INS) {
-                    this.INS = INS;return this;
-                };
-
-                CommandAPDU.prototype.setP1 = function setP1(P1) {
-                    this.P1 = P1;return this;
-                };
-
-                CommandAPDU.prototype.setP2 = function setP2(P2) {
-                    this.P2 = P2;return this;
-                };
-
-                CommandAPDU.prototype.setData = function setData(data) {
-                    this.data = data;return this;
-                };
-
-                CommandAPDU.prototype.setLe = function setLe(Le) {
-                    this.Le = Le;return this;
-                };
-
-                CommandAPDU.prototype.toJSON = function toJSON() {
-                    return {
-                        CLA: this.CLA,
-                        INS: this.INS,
-                        P1: this.P1,
-                        P2: this.P2,
-                        data: this.data,
-                        Le: this.Le
-                    };
-                };
-
-                CommandAPDU.prototype.encodeBytes = function encodeBytes(options) {
-                    var dlen = this.Lc > 0 ? 1 + this.Lc : 0;
-                    var len = 4 + dlen + (this.Le > 0 ? 1 : 0);
-                    var ba = new ByteArray().setLength(len);
-                    ba.setBytesAt(0, this.header);
-                    if (this.Lc) {
-                        ba.setByteAt(4, this.Lc);
-                        ba.setBytesAt(5, this.data);
-                    }
-                    if (this.Le > 0) {
-                        ba.setByteAt(4 + dlen, this.Le);
-                    }
-                    return ba;
-                };
-
-                CommandAPDU.prototype.decodeBytes = function decodeBytes(byteArray, options) {
-                    if (byteArray.length < 4) throw new Error('CommandAPDU: Invalid buffer');
-                    var offset = 0;
-                    this.CLA = byteArray.byteAt(offset++);
-                    this.INS = byteArray.byteAt(offset++);
-                    this.P1 = byteArray.byteAt(offset++);
-                    this.P2 = byteArray.byteAt(offset++);
-                    if (byteArray.length > offset + 1) {
-                        var Lc = byteArray.byteAt(offset++);
-                        this.data = byteArray.bytesAt(offset, Lc);
-                        offset += Lc;
-                    }
-                    if (byteArray.length > offset) this.Le = byteArray.byteAt(offset++);
-                    if (byteArray.length != offset) throw new Error('CommandAPDU: Invalid buffer');
-                    return this;
-                };
-
-                _createClass(CommandAPDU, [{
-                    key: 'Lc',
-                    get: function get() {
-                        return this.data.length;
-                    }
-                }, {
-                    key: 'header',
-                    get: function get() {
-                        return new ByteArray([this.CLA, this.INS, this.P1, this.P2]);
-                    }
-                }]);
-
-                return CommandAPDU;
-            })();
-
-            _export('CommandAPDU', CommandAPDU);
-
-            KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').integerField('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', ByteArray).integerField('Le', 'Expected Length');
-
-            _export('ISO7816', ISO7816);
-
-            (function (ISO7816) {
-                ISO7816[ISO7816["CLA_ISO"] = 0] = "CLA_ISO";
-                ISO7816[ISO7816["INS_EXTERNAL_AUTHENTICATE"] = 130] = "INS_EXTERNAL_AUTHENTICATE";
-                ISO7816[ISO7816["INS_GET_CHALLENGE"] = 132] = "INS_GET_CHALLENGE";
-                ISO7816[ISO7816["INS_INTERNAL_AUTHENTICATE"] = 136] = "INS_INTERNAL_AUTHENTICATE";
-                ISO7816[ISO7816["INS_SELECT_FILE"] = 164] = "INS_SELECT_FILE";
-                ISO7816[ISO7816["INS_READ_RECORD"] = 178] = "INS_READ_RECORD";
-                ISO7816[ISO7816["INS_UPDATE_RECORD"] = 220] = "INS_UPDATE_RECORD";
-                ISO7816[ISO7816["INS_VERIFY"] = 32] = "INS_VERIFY";
-                ISO7816[ISO7816["INS_BLOCK_APPLICATION"] = 30] = "INS_BLOCK_APPLICATION";
-                ISO7816[ISO7816["INS_UNBLOCK_APPLICATION"] = 24] = "INS_UNBLOCK_APPLICATION";
-                ISO7816[ISO7816["INS_UNBLOCK_CHANGE_PIN"] = 36] = "INS_UNBLOCK_CHANGE_PIN";
-                ISO7816[ISO7816["INS_GET_DATA"] = 202] = "INS_GET_DATA";
-                ISO7816[ISO7816["TAG_APPLICATION_TEMPLATE"] = 97] = "TAG_APPLICATION_TEMPLATE";
-                ISO7816[ISO7816["TAG_FCI_PROPRIETARY_TEMPLATE"] = 165] = "TAG_FCI_PROPRIETARY_TEMPLATE";
-                ISO7816[ISO7816["TAG_FCI_TEMPLATE"] = 111] = "TAG_FCI_TEMPLATE";
-                ISO7816[ISO7816["TAG_AID"] = 79] = "TAG_AID";
-                ISO7816[ISO7816["TAG_APPLICATION_LABEL"] = 80] = "TAG_APPLICATION_LABEL";
-                ISO7816[ISO7816["TAG_LANGUAGE_PREFERENCES"] = 24365] = "TAG_LANGUAGE_PREFERENCES";
-                ISO7816[ISO7816["TAG_APPLICATION_EFFECTIVE_DATE"] = 24357] = "TAG_APPLICATION_EFFECTIVE_DATE";
-                ISO7816[ISO7816["TAG_APPLICATION_EXPIRY_DATE"] = 24356] = "TAG_APPLICATION_EXPIRY_DATE";
-                ISO7816[ISO7816["TAG_CARDHOLDER_NAME"] = 24352] = "TAG_CARDHOLDER_NAME";
-                ISO7816[ISO7816["TAG_ISSUER_COUNTRY_CODE"] = 24360] = "TAG_ISSUER_COUNTRY_CODE";
-                ISO7816[ISO7816["TAG_ISSUER_URL"] = 24400] = "TAG_ISSUER_URL";
-                ISO7816[ISO7816["TAG_PAN"] = 90] = "TAG_PAN";
-                ISO7816[ISO7816["TAG_PAN_SEQUENCE_NUMBER"] = 24372] = "TAG_PAN_SEQUENCE_NUMBER";
-                ISO7816[ISO7816["TAG_SERVICE_CODE"] = 24368] = "TAG_SERVICE_CODE";
-                ISO7816[ISO7816["ISO_PINBLOCK_SIZE"] = 8] = "ISO_PINBLOCK_SIZE";
-                ISO7816[ISO7816["APDU_LEN_LE_MAX"] = 256] = "APDU_LEN_LE_MAX";
-                ISO7816[ISO7816["SW_SUCCESS"] = 36864] = "SW_SUCCESS";
-                ISO7816[ISO7816["SW_WARNING_NV_MEMORY_UNCHANGED"] = 25088] = "SW_WARNING_NV_MEMORY_UNCHANGED";
-                ISO7816[ISO7816["SW_PART_OF_RETURN_DATA_CORRUPTED"] = 25217] = "SW_PART_OF_RETURN_DATA_CORRUPTED";
-                ISO7816[ISO7816["SW_END_FILE_REACHED_BEFORE_LE_BYTE"] = 25218] = "SW_END_FILE_REACHED_BEFORE_LE_BYTE";
-                ISO7816[ISO7816["SW_SELECTED_FILE_INVALID"] = 25219] = "SW_SELECTED_FILE_INVALID";
-                ISO7816[ISO7816["SW_FCI_NOT_FORMATTED_TO_ISO"] = 25220] = "SW_FCI_NOT_FORMATTED_TO_ISO";
-                ISO7816[ISO7816["SW_WARNING_NV_MEMORY_CHANGED"] = 25344] = "SW_WARNING_NV_MEMORY_CHANGED";
-                ISO7816[ISO7816["SW_FILE_FILLED_BY_LAST_WRITE"] = 25473] = "SW_FILE_FILLED_BY_LAST_WRITE";
-                ISO7816[ISO7816["SW_WRONG_LENGTH"] = 26368] = "SW_WRONG_LENGTH";
-                ISO7816[ISO7816["SW_FUNCTIONS_IN_CLA_NOT_SUPPORTED"] = 26624] = "SW_FUNCTIONS_IN_CLA_NOT_SUPPORTED";
-                ISO7816[ISO7816["SW_LOGICAL_CHANNEL_NOT_SUPPORTED"] = 26753] = "SW_LOGICAL_CHANNEL_NOT_SUPPORTED";
-                ISO7816[ISO7816["SW_SECURE_MESSAGING_NOT_SUPPORTED"] = 26754] = "SW_SECURE_MESSAGING_NOT_SUPPORTED";
-                ISO7816[ISO7816["SW_COMMAND_NOT_ALLOWED"] = 26880] = "SW_COMMAND_NOT_ALLOWED";
-                ISO7816[ISO7816["SW_COMMAND_INCOMPATIBLE_WITH_FILE_STRUCTURE"] = 27009] = "SW_COMMAND_INCOMPATIBLE_WITH_FILE_STRUCTURE";
-                ISO7816[ISO7816["SW_SECURITY_STATUS_NOT_SATISFIED"] = 27010] = "SW_SECURITY_STATUS_NOT_SATISFIED";
-                ISO7816[ISO7816["SW_FILE_INVALID"] = 27011] = "SW_FILE_INVALID";
-                ISO7816[ISO7816["SW_DATA_INVALID"] = 27012] = "SW_DATA_INVALID";
-                ISO7816[ISO7816["SW_CONDITIONS_NOT_SATISFIED"] = 27013] = "SW_CONDITIONS_NOT_SATISFIED";
-                ISO7816[ISO7816["SW_COMMAND_NOT_ALLOWED_AGAIN"] = 27014] = "SW_COMMAND_NOT_ALLOWED_AGAIN";
-                ISO7816[ISO7816["SW_EXPECTED_SM_DATA_OBJECTS_MISSING"] = 27015] = "SW_EXPECTED_SM_DATA_OBJECTS_MISSING";
-                ISO7816[ISO7816["SW_SM_DATA_OBJECTS_INCORRECT"] = 27016] = "SW_SM_DATA_OBJECTS_INCORRECT";
-                ISO7816[ISO7816["SW_WRONG_PARAMS"] = 27136] = "SW_WRONG_PARAMS";
-                ISO7816[ISO7816["SW_WRONG_DATA"] = 27264] = "SW_WRONG_DATA";
-                ISO7816[ISO7816["SW_FUNC_NOT_SUPPORTED"] = 27265] = "SW_FUNC_NOT_SUPPORTED";
-                ISO7816[ISO7816["SW_FILE_NOT_FOUND"] = 27266] = "SW_FILE_NOT_FOUND";
-                ISO7816[ISO7816["SW_RECORD_NOT_FOUND"] = 27267] = "SW_RECORD_NOT_FOUND";
-                ISO7816[ISO7816["SW_NOT_ENOUGH_SPACE_IN_FILE"] = 27268] = "SW_NOT_ENOUGH_SPACE_IN_FILE";
-                ISO7816[ISO7816["SW_LC_INCONSISTENT_WITH_TLV"] = 27269] = "SW_LC_INCONSISTENT_WITH_TLV";
-                ISO7816[ISO7816["SW_INCORRECT_P1P2"] = 27270] = "SW_INCORRECT_P1P2";
-                ISO7816[ISO7816["SW_LC_INCONSISTENT_WITH_P1P2"] = 27271] = "SW_LC_INCONSISTENT_WITH_P1P2";
-                ISO7816[ISO7816["SW_REFERENCED_DATA_NOT_FOUND"] = 27272] = "SW_REFERENCED_DATA_NOT_FOUND";
-                ISO7816[ISO7816["SW_WRONG_P1P2"] = 27392] = "SW_WRONG_P1P2";
-                ISO7816[ISO7816["SW_INS_NOT_SUPPORTED"] = 27904] = "SW_INS_NOT_SUPPORTED";
-                ISO7816[ISO7816["SW_CLA_NOT_SUPPORTED"] = 28160] = "SW_CLA_NOT_SUPPORTED";
-                ISO7816[ISO7816["SW_UNKNOWN"] = 28416] = "SW_UNKNOWN";
-            })(ISO7816 || _export('ISO7816', ISO7816 = {}));
-
-            ResponseAPDU = (function () {
-                function ResponseAPDU(attributes) {
-                    _classCallCheck(this, ResponseAPDU);
-
-                    this.SW = ISO7816.SW_SUCCESS;
-                    this.data = new ByteArray();
-                    Kind.initFields(this, attributes);
-                }
-
-                ResponseAPDU.init = function init(sw, data) {
-                    return new ResponseAPDU().set(sw, data);
-                };
-
-                ResponseAPDU.prototype.set = function set(sw, data) {
-                    this.SW = sw;
-                    this.data = data || new ByteArray();
-                    return this;
-                };
-
-                ResponseAPDU.prototype.setSW = function setSW(SW) {
-                    this.SW = SW;return this;
-                };
-
-                ResponseAPDU.prototype.setSW1 = function setSW1(SW1) {
-                    this.SW = this.SW & 0xFF | SW1 << 8;return this;
-                };
-
-                ResponseAPDU.prototype.setSW2 = function setSW2(SW2) {
-                    this.SW = this.SW & 0xFF00 | SW2;return this;
-                };
-
-                ResponseAPDU.prototype.setData = function setData(data) {
-                    this.data = data;return this;
-                };
-
-                ResponseAPDU.prototype.encodeBytes = function encodeBytes(options) {
-                    var ba = new ByteArray().setLength(this.La + 2);
-                    ba.setBytesAt(0, this.data);
-                    ba.setByteAt(this.La, this.SW >> 8 & 0xff);
-                    ba.setByteAt(this.La + 1, this.SW >> 0 & 0xff);
-                    return ba;
-                };
-
-                ResponseAPDU.prototype.decodeBytes = function decodeBytes(byteArray, options) {
-                    if (byteArray.length < 2) throw new Error('ResponseAPDU Buffer invalid');
-                    var la = byteArray.length - 2;
-                    this.SW = byteArray.wordAt(la);
-                    this.data = la ? byteArray.bytesAt(0, la) : new ByteArray();
-                    return this;
-                };
-
-                _createClass(ResponseAPDU, [{
-                    key: 'La',
-                    get: function get() {
-                        return this.data.length;
-                    }
-                }]);
-
-                return ResponseAPDU;
-            })();
-
-            _export('ResponseAPDU', ResponseAPDU);
-
-            KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').integerField('SW', 'Status Word', { maximum: 0xFFFF }).integerField('La', 'Actual Length', { calculated: true }).field('Data', 'Response Data', ByteArray);
-
-            SlotProtocolHandler = (function () {
-                function SlotProtocolHandler() {
-                    _classCallCheck(this, SlotProtocolHandler);
-                }
-
-                SlotProtocolHandler.prototype.linkSlot = function linkSlot(slot, endPoint) {
-                    this.endPoint = endPoint;
-                    this.slot = slot;
-                    endPoint.onMessage(this.onMessage);
-                };
-
-                SlotProtocolHandler.prototype.unlinkSlot = function unlinkSlot() {
-                    this.endPoint.onMessage(null);
-                    this.endPoint = null;
-                    this.slot = null;
-                };
-
-                SlotProtocolHandler.prototype.onMessage = function onMessage(packet, receivingEndPoint) {
-                    var hdr = packet.header;
-                    var payload = packet.payload;
-                    var response = undefined;
-                    switch (hdr.method) {
-                        case "executeAPDU":
-                            if (!(hdr.kind instanceof CommandAPDU)) break;
-                            response = this.slot.executeAPDU(payload);
-                            response.then(function (responseAPDU) {
-                                var replyPacket = new Message({ method: "executeAPDU" }, responseAPDU);
-                                receivingEndPoint.sendMessage(replyPacket);
-                            });
-                            break;
-                        case "powerOff":
-                        case "powerOn":
-                        case "reset":
-                            if (hdr.method == 'reset') response = this.slot.reset();else if (hdr.method == 'powerOn') response = this.slot.powerOn();else response = this.slot.powerOff();
-                            response.then(function (respData) {
-                                receivingEndPoint.sendMessage(new Message({ method: hdr.method }, respData));
-                            });
-                        default:
-                            response = Promise.reject(new Error("Invalid method" + hdr.method));
-                            break;
-                    }
-                    response['catch'](function (e) {
-                        var errorPacket = new Message({ method: "error" }, e);
-                        receivingEndPoint.sendMessage(errorPacket);
-                    });
-                };
-
-                return SlotProtocolHandler;
-            })();
-
-            _export('SlotProtocolHandler', SlotProtocolHandler);
-
             Key = (function () {
                 function Key() {
                     _classCallCheck(this, Key);
@@ -658,7 +271,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return Key;
             })();
 
-            _export('Key', Key);
+            _export("Key", Key);
 
             Key.SECRET = 1;
             Key.PRIVATE = 2;
@@ -924,7 +537,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return Crypto;
             })();
 
-            _export('Crypto', Crypto);
+            _export("Crypto", Crypto);
 
             Crypto.DES_CBC = 2;
             Crypto.DES_ECB = 5;
@@ -1005,7 +618,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 };
 
                 _createClass(ByteString, [{
-                    key: 'length',
+                    key: "length",
                     get: function get() {
                         return this.byteArray.length;
                     }
@@ -1014,17 +627,17 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return ByteString;
             })();
 
-            _export('ByteString', ByteString);
+            _export("ByteString", ByteString);
 
             ByteString.HEX = ByteEncoding.HEX;
             ByteString.BASE64 = ByteEncoding.BASE64;
             HEX = ByteString.HEX;
 
-            _export('HEX', HEX);
+            _export("HEX", HEX);
 
             BASE64 = ByteString.BASE64;
 
-            _export('BASE64', BASE64);
+            _export("BASE64", BASE64);
 
             ByteBuffer = (function () {
                 function ByteBuffer(value, encoding) {
@@ -1059,7 +672,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 };
 
                 _createClass(ByteBuffer, [{
-                    key: 'length',
+                    key: "length",
                     get: function get() {
                         return this.byteArray.length;
                     }
@@ -1068,7 +681,97 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return ByteBuffer;
             })();
 
-            _export('ByteBuffer', ByteBuffer);
+            _export("ByteBuffer", ByteBuffer);
+
+            BaseTLV = (function () {
+                function BaseTLV(tag, value, encoding) {
+                    _classCallCheck(this, BaseTLV);
+
+                    this.encoding = encoding || BaseTLV.Encodings.EMV;
+                    switch (this.encoding) {
+                        case BaseTLV.Encodings.EMV:
+                            {
+                                var tlvBuffer = new ByteArray([]);
+                                if (tag >= 0x100) tlvBuffer.addByte(tag >> 8 & 0xFF);
+                                tlvBuffer.addByte(tag & 0xFF);
+                                var len = value.length;
+                                if (len > 0xFF) {
+                                    tlvBuffer.addByte(0x82);
+                                    tlvBuffer.addByte(len >> 8 & 0xFF);
+                                } else if (len > 0x7F) tlvBuffer.addByte(0x81);
+                                tlvBuffer.addByte(len & 0xFF);
+                                tlvBuffer.concat(value);
+                                this.byteArray = tlvBuffer;
+                                break;
+                            }
+                    }
+                }
+
+                BaseTLV.parseTLV = function parseTLV(buffer, encoding) {
+                    var res = { tag: 0, len: 0, value: undefined, lenOffset: 0, valueOffset: 0 };
+                    var off = 0;
+                    var bytes = buffer.backingArray;
+                    switch (encoding) {
+                        case BaseTLV.Encodings.EMV:
+                            {
+                                while (off < bytes.length && (bytes[off] == 0x00 || bytes[off] == 0xFF)) ++off;
+                                if (off >= bytes.length) return res;
+                                if ((bytes[off] & 0x1F) == 0x1F) {
+                                    res.tag = bytes[off++] << 8;
+                                    if (off >= bytes.length) {
+                                        return null;
+                                    }
+                                }
+                                res.tag |= bytes[off++];
+                                res.lenOffset = off;
+                                if (off >= bytes.length) {
+                                    return null;
+                                }
+                                var ll = bytes[off] & 0x80 ? bytes[off++] & 0x7F : 1;
+                                while (ll-- > 0) {
+                                    if (off >= bytes.length) {
+                                        return null;
+                                    }
+                                    res.len = res.len << 8 | bytes[off++];
+                                }
+                                res.valueOffset = off;
+                                if (off + res.len > bytes.length) {
+                                    return null;
+                                }
+                                res.value = bytes.slice(res.valueOffset, res.valueOffset + res.len);
+                                break;
+                            }
+                    }
+                    return res;
+                };
+
+                _createClass(BaseTLV, [{
+                    key: "tag",
+                    get: function get() {
+                        return BaseTLV.parseTLV(this.byteArray, this.encoding).tag;
+                    }
+                }, {
+                    key: "value",
+                    get: function get() {
+                        return BaseTLV.parseTLV(this.byteArray, this.encoding).value;
+                    }
+                }, {
+                    key: "len",
+                    get: function get() {
+                        return BaseTLV.parseTLV(this.byteArray, this.encoding).len;
+                    }
+                }]);
+
+                return BaseTLV;
+            })();
+
+            _export("BaseTLV", BaseTLV);
+
+            BaseTLV.Encodings = {
+                EMV: 1,
+                DGI: 2
+            };
+            BaseTLV.Encodings["CTV"] = 4;
 
             TLV = (function () {
                 function TLV(tag, value, encoding) {
@@ -1114,7 +817,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return TLV;
             })();
 
-            _export('TLV', TLV);
+            _export("TLV", TLV);
 
             TLV.EMV = BaseTLV.Encodings.EMV;
             TLV.DGI = BaseTLV.Encodings.DGI;
@@ -1144,7 +847,312 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return TLVList;
             })();
 
-            _export('TLVList', TLVList);
+            _export("TLVList", TLVList);
+
+            CommandAPDU = (function () {
+                function CommandAPDU(attributes) {
+                    _classCallCheck(this, CommandAPDU);
+
+                    this.INS = 0;
+                    this.P1 = 0;
+                    this.P2 = 0;
+                    this.data = new ByteArray();
+                    this.Le = 0;
+                    Kind.initFields(this, attributes);
+                }
+
+                CommandAPDU.init = function init(CLA, INS, P1, P2, data, expectedLen) {
+                    return new CommandAPDU().set(CLA, INS, P1, P2, data, expectedLen);
+                };
+
+                CommandAPDU.prototype.set = function set(CLA, INS, P1, P2, data, expectedLen) {
+                    this.CLA = CLA;
+                    this.INS = INS;
+                    this.P1 = P1;
+                    this.P2 = P2;
+                    this.data = data || new ByteArray();
+                    this.Le = expectedLen || 0;
+                    return this;
+                };
+
+                CommandAPDU.prototype.setCLA = function setCLA(CLA) {
+                    this.CLA = CLA;return this;
+                };
+
+                CommandAPDU.prototype.setINS = function setINS(INS) {
+                    this.INS = INS;return this;
+                };
+
+                CommandAPDU.prototype.setP1 = function setP1(P1) {
+                    this.P1 = P1;return this;
+                };
+
+                CommandAPDU.prototype.setP2 = function setP2(P2) {
+                    this.P2 = P2;return this;
+                };
+
+                CommandAPDU.prototype.setData = function setData(data) {
+                    this.data = data;return this;
+                };
+
+                CommandAPDU.prototype.setLe = function setLe(Le) {
+                    this.Le = Le;return this;
+                };
+
+                CommandAPDU.prototype.toJSON = function toJSON() {
+                    return {
+                        CLA: this.CLA,
+                        INS: this.INS,
+                        P1: this.P1,
+                        P2: this.P2,
+                        data: this.data,
+                        Le: this.Le
+                    };
+                };
+
+                CommandAPDU.prototype.encodeBytes = function encodeBytes(options) {
+                    var dlen = this.Lc > 0 ? 1 + this.Lc : 0;
+                    var len = 4 + dlen + (this.Le > 0 ? 1 : 0);
+                    var ba = new ByteArray().setLength(len);
+                    ba.setBytesAt(0, this.header);
+                    if (this.Lc) {
+                        ba.setByteAt(4, this.Lc);
+                        ba.setBytesAt(5, this.data);
+                    }
+                    if (this.Le > 0) {
+                        ba.setByteAt(4 + dlen, this.Le);
+                    }
+                    return ba;
+                };
+
+                CommandAPDU.prototype.decodeBytes = function decodeBytes(byteArray, options) {
+                    if (byteArray.length < 4) throw new Error('CommandAPDU: Invalid buffer');
+                    var offset = 0;
+                    this.CLA = byteArray.byteAt(offset++);
+                    this.INS = byteArray.byteAt(offset++);
+                    this.P1 = byteArray.byteAt(offset++);
+                    this.P2 = byteArray.byteAt(offset++);
+                    if (byteArray.length > offset + 1) {
+                        var Lc = byteArray.byteAt(offset++);
+                        this.data = byteArray.bytesAt(offset, Lc);
+                        offset += Lc;
+                    }
+                    if (byteArray.length > offset) this.Le = byteArray.byteAt(offset++);
+                    if (byteArray.length != offset) throw new Error('CommandAPDU: Invalid buffer');
+                    return this;
+                };
+
+                _createClass(CommandAPDU, [{
+                    key: "Lc",
+                    get: function get() {
+                        return this.data.length;
+                    }
+                }, {
+                    key: "header",
+                    get: function get() {
+                        return new ByteArray([this.CLA, this.INS, this.P1, this.P2]);
+                    }
+                }]);
+
+                return CommandAPDU;
+            })();
+
+            _export("CommandAPDU", CommandAPDU);
+
+            KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').integerField('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', ByteArray).integerField('Le', 'Expected Length');
+
+            _export("ISO7816", ISO7816);
+
+            (function (ISO7816) {
+                ISO7816[ISO7816["CLA_ISO"] = 0] = "CLA_ISO";
+                ISO7816[ISO7816["INS_EXTERNAL_AUTHENTICATE"] = 130] = "INS_EXTERNAL_AUTHENTICATE";
+                ISO7816[ISO7816["INS_GET_CHALLENGE"] = 132] = "INS_GET_CHALLENGE";
+                ISO7816[ISO7816["INS_INTERNAL_AUTHENTICATE"] = 136] = "INS_INTERNAL_AUTHENTICATE";
+                ISO7816[ISO7816["INS_SELECT_FILE"] = 164] = "INS_SELECT_FILE";
+                ISO7816[ISO7816["INS_READ_RECORD"] = 178] = "INS_READ_RECORD";
+                ISO7816[ISO7816["INS_UPDATE_RECORD"] = 220] = "INS_UPDATE_RECORD";
+                ISO7816[ISO7816["INS_VERIFY"] = 32] = "INS_VERIFY";
+                ISO7816[ISO7816["INS_BLOCK_APPLICATION"] = 30] = "INS_BLOCK_APPLICATION";
+                ISO7816[ISO7816["INS_UNBLOCK_APPLICATION"] = 24] = "INS_UNBLOCK_APPLICATION";
+                ISO7816[ISO7816["INS_UNBLOCK_CHANGE_PIN"] = 36] = "INS_UNBLOCK_CHANGE_PIN";
+                ISO7816[ISO7816["INS_GET_DATA"] = 202] = "INS_GET_DATA";
+                ISO7816[ISO7816["TAG_APPLICATION_TEMPLATE"] = 97] = "TAG_APPLICATION_TEMPLATE";
+                ISO7816[ISO7816["TAG_FCI_PROPRIETARY_TEMPLATE"] = 165] = "TAG_FCI_PROPRIETARY_TEMPLATE";
+                ISO7816[ISO7816["TAG_FCI_TEMPLATE"] = 111] = "TAG_FCI_TEMPLATE";
+                ISO7816[ISO7816["TAG_AID"] = 79] = "TAG_AID";
+                ISO7816[ISO7816["TAG_APPLICATION_LABEL"] = 80] = "TAG_APPLICATION_LABEL";
+                ISO7816[ISO7816["TAG_LANGUAGE_PREFERENCES"] = 24365] = "TAG_LANGUAGE_PREFERENCES";
+                ISO7816[ISO7816["TAG_APPLICATION_EFFECTIVE_DATE"] = 24357] = "TAG_APPLICATION_EFFECTIVE_DATE";
+                ISO7816[ISO7816["TAG_APPLICATION_EXPIRY_DATE"] = 24356] = "TAG_APPLICATION_EXPIRY_DATE";
+                ISO7816[ISO7816["TAG_CARDHOLDER_NAME"] = 24352] = "TAG_CARDHOLDER_NAME";
+                ISO7816[ISO7816["TAG_ISSUER_COUNTRY_CODE"] = 24360] = "TAG_ISSUER_COUNTRY_CODE";
+                ISO7816[ISO7816["TAG_ISSUER_URL"] = 24400] = "TAG_ISSUER_URL";
+                ISO7816[ISO7816["TAG_PAN"] = 90] = "TAG_PAN";
+                ISO7816[ISO7816["TAG_PAN_SEQUENCE_NUMBER"] = 24372] = "TAG_PAN_SEQUENCE_NUMBER";
+                ISO7816[ISO7816["TAG_SERVICE_CODE"] = 24368] = "TAG_SERVICE_CODE";
+                ISO7816[ISO7816["ISO_PINBLOCK_SIZE"] = 8] = "ISO_PINBLOCK_SIZE";
+                ISO7816[ISO7816["APDU_LEN_LE_MAX"] = 256] = "APDU_LEN_LE_MAX";
+                ISO7816[ISO7816["SW_SUCCESS"] = 36864] = "SW_SUCCESS";
+                ISO7816[ISO7816["SW_WARNING_NV_MEMORY_UNCHANGED"] = 25088] = "SW_WARNING_NV_MEMORY_UNCHANGED";
+                ISO7816[ISO7816["SW_PART_OF_RETURN_DATA_CORRUPTED"] = 25217] = "SW_PART_OF_RETURN_DATA_CORRUPTED";
+                ISO7816[ISO7816["SW_END_FILE_REACHED_BEFORE_LE_BYTE"] = 25218] = "SW_END_FILE_REACHED_BEFORE_LE_BYTE";
+                ISO7816[ISO7816["SW_SELECTED_FILE_INVALID"] = 25219] = "SW_SELECTED_FILE_INVALID";
+                ISO7816[ISO7816["SW_FCI_NOT_FORMATTED_TO_ISO"] = 25220] = "SW_FCI_NOT_FORMATTED_TO_ISO";
+                ISO7816[ISO7816["SW_WARNING_NV_MEMORY_CHANGED"] = 25344] = "SW_WARNING_NV_MEMORY_CHANGED";
+                ISO7816[ISO7816["SW_FILE_FILLED_BY_LAST_WRITE"] = 25473] = "SW_FILE_FILLED_BY_LAST_WRITE";
+                ISO7816[ISO7816["SW_WRONG_LENGTH"] = 26368] = "SW_WRONG_LENGTH";
+                ISO7816[ISO7816["SW_FUNCTIONS_IN_CLA_NOT_SUPPORTED"] = 26624] = "SW_FUNCTIONS_IN_CLA_NOT_SUPPORTED";
+                ISO7816[ISO7816["SW_LOGICAL_CHANNEL_NOT_SUPPORTED"] = 26753] = "SW_LOGICAL_CHANNEL_NOT_SUPPORTED";
+                ISO7816[ISO7816["SW_SECURE_MESSAGING_NOT_SUPPORTED"] = 26754] = "SW_SECURE_MESSAGING_NOT_SUPPORTED";
+                ISO7816[ISO7816["SW_COMMAND_NOT_ALLOWED"] = 26880] = "SW_COMMAND_NOT_ALLOWED";
+                ISO7816[ISO7816["SW_COMMAND_INCOMPATIBLE_WITH_FILE_STRUCTURE"] = 27009] = "SW_COMMAND_INCOMPATIBLE_WITH_FILE_STRUCTURE";
+                ISO7816[ISO7816["SW_SECURITY_STATUS_NOT_SATISFIED"] = 27010] = "SW_SECURITY_STATUS_NOT_SATISFIED";
+                ISO7816[ISO7816["SW_FILE_INVALID"] = 27011] = "SW_FILE_INVALID";
+                ISO7816[ISO7816["SW_DATA_INVALID"] = 27012] = "SW_DATA_INVALID";
+                ISO7816[ISO7816["SW_CONDITIONS_NOT_SATISFIED"] = 27013] = "SW_CONDITIONS_NOT_SATISFIED";
+                ISO7816[ISO7816["SW_COMMAND_NOT_ALLOWED_AGAIN"] = 27014] = "SW_COMMAND_NOT_ALLOWED_AGAIN";
+                ISO7816[ISO7816["SW_EXPECTED_SM_DATA_OBJECTS_MISSING"] = 27015] = "SW_EXPECTED_SM_DATA_OBJECTS_MISSING";
+                ISO7816[ISO7816["SW_SM_DATA_OBJECTS_INCORRECT"] = 27016] = "SW_SM_DATA_OBJECTS_INCORRECT";
+                ISO7816[ISO7816["SW_WRONG_PARAMS"] = 27136] = "SW_WRONG_PARAMS";
+                ISO7816[ISO7816["SW_WRONG_DATA"] = 27264] = "SW_WRONG_DATA";
+                ISO7816[ISO7816["SW_FUNC_NOT_SUPPORTED"] = 27265] = "SW_FUNC_NOT_SUPPORTED";
+                ISO7816[ISO7816["SW_FILE_NOT_FOUND"] = 27266] = "SW_FILE_NOT_FOUND";
+                ISO7816[ISO7816["SW_RECORD_NOT_FOUND"] = 27267] = "SW_RECORD_NOT_FOUND";
+                ISO7816[ISO7816["SW_NOT_ENOUGH_SPACE_IN_FILE"] = 27268] = "SW_NOT_ENOUGH_SPACE_IN_FILE";
+                ISO7816[ISO7816["SW_LC_INCONSISTENT_WITH_TLV"] = 27269] = "SW_LC_INCONSISTENT_WITH_TLV";
+                ISO7816[ISO7816["SW_INCORRECT_P1P2"] = 27270] = "SW_INCORRECT_P1P2";
+                ISO7816[ISO7816["SW_LC_INCONSISTENT_WITH_P1P2"] = 27271] = "SW_LC_INCONSISTENT_WITH_P1P2";
+                ISO7816[ISO7816["SW_REFERENCED_DATA_NOT_FOUND"] = 27272] = "SW_REFERENCED_DATA_NOT_FOUND";
+                ISO7816[ISO7816["SW_WRONG_P1P2"] = 27392] = "SW_WRONG_P1P2";
+                ISO7816[ISO7816["SW_INS_NOT_SUPPORTED"] = 27904] = "SW_INS_NOT_SUPPORTED";
+                ISO7816[ISO7816["SW_CLA_NOT_SUPPORTED"] = 28160] = "SW_CLA_NOT_SUPPORTED";
+                ISO7816[ISO7816["SW_UNKNOWN"] = 28416] = "SW_UNKNOWN";
+            })(ISO7816 || _export("ISO7816", ISO7816 = {}));
+
+            ResponseAPDU = (function () {
+                function ResponseAPDU(attributes) {
+                    _classCallCheck(this, ResponseAPDU);
+
+                    this.SW = ISO7816.SW_SUCCESS;
+                    this.data = new ByteArray();
+                    Kind.initFields(this, attributes);
+                }
+
+                ResponseAPDU.init = function init(sw, data) {
+                    return new ResponseAPDU().set(sw, data);
+                };
+
+                ResponseAPDU.prototype.set = function set(sw, data) {
+                    this.SW = sw;
+                    this.data = data || new ByteArray();
+                    return this;
+                };
+
+                ResponseAPDU.prototype.setSW = function setSW(SW) {
+                    this.SW = SW;return this;
+                };
+
+                ResponseAPDU.prototype.setSW1 = function setSW1(SW1) {
+                    this.SW = this.SW & 0xFF | SW1 << 8;return this;
+                };
+
+                ResponseAPDU.prototype.setSW2 = function setSW2(SW2) {
+                    this.SW = this.SW & 0xFF00 | SW2;return this;
+                };
+
+                ResponseAPDU.prototype.setData = function setData(data) {
+                    this.data = data;return this;
+                };
+
+                ResponseAPDU.prototype.encodeBytes = function encodeBytes(options) {
+                    var ba = new ByteArray().setLength(this.La + 2);
+                    ba.setBytesAt(0, this.data);
+                    ba.setByteAt(this.La, this.SW >> 8 & 0xff);
+                    ba.setByteAt(this.La + 1, this.SW >> 0 & 0xff);
+                    return ba;
+                };
+
+                ResponseAPDU.prototype.decodeBytes = function decodeBytes(byteArray, options) {
+                    if (byteArray.length < 2) throw new Error('ResponseAPDU Buffer invalid');
+                    var la = byteArray.length - 2;
+                    this.SW = byteArray.wordAt(la);
+                    this.data = la ? byteArray.bytesAt(0, la) : new ByteArray();
+                    return this;
+                };
+
+                _createClass(ResponseAPDU, [{
+                    key: "La",
+                    get: function get() {
+                        return this.data.length;
+                    }
+                }]);
+
+                return ResponseAPDU;
+            })();
+
+            _export("ResponseAPDU", ResponseAPDU);
+
+            KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').integerField('SW', 'Status Word', { maximum: 0xFFFF }).integerField('La', 'Actual Length', { calculated: true }).field('Data', 'Response Data', ByteArray);
+
+            SlotProtocolHandler = (function () {
+                function SlotProtocolHandler() {
+                    _classCallCheck(this, SlotProtocolHandler);
+                }
+
+                SlotProtocolHandler.prototype.linkSlot = function linkSlot(slot, endPoint) {
+                    this.endPoint = endPoint;
+                    this.slot = slot;
+                    endPoint.onMessage(this.onMessage);
+                };
+
+                SlotProtocolHandler.prototype.unlinkSlot = function unlinkSlot() {
+                    this.endPoint.onMessage(null);
+                    this.endPoint = null;
+                    this.slot = null;
+                };
+
+                SlotProtocolHandler.prototype.onMessage = function onMessage(packet, receivingEndPoint) {
+                    var hdr = packet.header;
+                    var payload = packet.payload;
+                    var response = undefined;
+                    switch (hdr.method) {
+                        case "executeAPDU":
+                            if (!(payload instanceof CommandAPDU)) break;
+                            response = this.slot.executeAPDU(payload);
+                            response.then(function (responseAPDU) {
+                                var replyPacket = new Message({ method: "executeAPDU" }, responseAPDU);
+                                receivingEndPoint.sendMessage(replyPacket);
+                            });
+                            break;
+                        case "powerOff":
+                            response = this.slot.powerOff().then(function (respData) {
+                                receivingEndPoint.sendMessage(new Message({ method: hdr.method }, new ByteArray()));
+                            });
+                            break;
+                        case "powerOn":
+                            response = this.slot.powerOn().then(function (respData) {
+                                receivingEndPoint.sendMessage(new Message({ method: hdr.method }, respData));
+                            });
+                            break;
+                        case "reset":
+                            response = this.slot.reset().then(function (respData) {
+                                receivingEndPoint.sendMessage(new Message({ method: hdr.method }, respData));
+                            });
+                            break;
+                        default:
+                            response = Promise.reject(new Error("Invalid method" + hdr.method));
+                            break;
+                    }
+                    response["catch"](function (e) {
+                        var errorPacket = new Message({ method: "error" }, e);
+                        receivingEndPoint.sendMessage(errorPacket);
+                    });
+                };
+
+                return SlotProtocolHandler;
+            })();
+
+            _export("SlotProtocolHandler", SlotProtocolHandler);
 
             JSSimulatedSlot = (function () {
                 function JSSimulatedSlot() {
@@ -1213,7 +1221,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return JSIMScriptApplet;
             })();
 
-            _export('JSIMScriptApplet', JSIMScriptApplet);
+            _export("JSIMScriptApplet", JSIMScriptApplet);
 
             JSIMScriptCard = (function () {
                 function JSIMScriptCard() {
@@ -1257,7 +1265,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 };
 
                 _createClass(JSIMScriptCard, [{
-                    key: 'isPowered',
+                    key: "isPowered",
                     get: function get() {
                         return this._powerIsOn;
                     }
@@ -1266,7 +1274,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return JSIMScriptCard;
             })();
 
-            _export('JSIMScriptCard', JSIMScriptCard);
+            _export("JSIMScriptCard", JSIMScriptCard);
 
             JSIMSlot = (function () {
                 function JSIMSlot(card) {
@@ -1309,12 +1317,12 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 };
 
                 _createClass(JSIMSlot, [{
-                    key: 'isPresent',
+                    key: "isPresent",
                     get: function get() {
                         return !!this.card;
                     }
                 }, {
-                    key: 'isPowered',
+                    key: "isPowered",
                     get: function get() {
                         return this.isPresent && this.card.isPowered;
                     }
@@ -1323,15 +1331,15 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return JSIMSlot;
             })();
 
-            _export('JSIMSlot', JSIMSlot);
+            _export("JSIMSlot", JSIMSlot);
 
-            _export('MEMFLAGS', MEMFLAGS);
+            _export("MEMFLAGS", MEMFLAGS);
 
             (function (MEMFLAGS) {
                 MEMFLAGS[MEMFLAGS["READ_ONLY"] = 1] = "READ_ONLY";
                 MEMFLAGS[MEMFLAGS["TRANSACTIONABLE"] = 2] = "TRANSACTIONABLE";
                 MEMFLAGS[MEMFLAGS["TRACE"] = 4] = "TRACE";
-            })(MEMFLAGS || _export('MEMFLAGS', MEMFLAGS = {}));
+            })(MEMFLAGS || _export("MEMFLAGS", MEMFLAGS = {}));
 
             Segment = (function () {
                 function Segment(segType, size, flags, base) {
@@ -1410,7 +1418,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return Segment;
             })();
 
-            _export('Segment', Segment);
+            _export("Segment", Segment);
 
             Accessor = (function () {
                 function Accessor(seg, addr, len, name) {
@@ -1518,7 +1526,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return Accessor;
             })();
 
-            _export('Accessor', Accessor);
+            _export("Accessor", Accessor);
 
             MemoryManager = (function () {
                 function MemoryManager() {
@@ -1550,9 +1558,9 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return MemoryManager;
             })();
 
-            _export('MemoryManager', MemoryManager);
+            _export("MemoryManager", MemoryManager);
 
-            _export('MELINST', MELINST);
+            _export("MELINST", MELINST);
 
             (function (MELINST) {
                 MELINST[MELINST["melSYSTEM"] = 0] = "melSYSTEM";
@@ -1587,10 +1595,10 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 MELINST[MELINST["melANDN"] = 29] = "melANDN";
                 MELINST[MELINST["melORN"] = 30] = "melORN";
                 MELINST[MELINST["melXORN"] = 31] = "melXORN";
-            })(MELINST || _export('MELINST', MELINST = {}));
+            })(MELINST || _export("MELINST", MELINST = {}));
             ;
 
-            _export('MELTAGADDR', MELTAGADDR);
+            _export("MELTAGADDR", MELTAGADDR);
 
             (function (MELTAGADDR) {
                 MELTAGADDR[MELTAGADDR["melAddrTOS"] = 0] = "melAddrTOS";
@@ -1601,10 +1609,10 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 MELTAGADDR[MELTAGADDR["melAddrDT"] = 5] = "melAddrDT";
                 MELTAGADDR[MELTAGADDR["melAddrPB"] = 6] = "melAddrPB";
                 MELTAGADDR[MELTAGADDR["melAddrPT"] = 7] = "melAddrPT";
-            })(MELTAGADDR || _export('MELTAGADDR', MELTAGADDR = {}));
+            })(MELTAGADDR || _export("MELTAGADDR", MELTAGADDR = {}));
             ;
 
-            _export('MELTAGCOND', MELTAGCOND);
+            _export("MELTAGCOND", MELTAGCOND);
 
             (function (MELTAGCOND) {
                 MELTAGCOND[MELTAGCOND["melCondSPEC"] = 0] = "melCondSPEC";
@@ -1615,10 +1623,10 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 MELTAGCOND[MELTAGCOND["melCondGE"] = 5] = "melCondGE";
                 MELTAGCOND[MELTAGCOND["melCondNE"] = 6] = "melCondNE";
                 MELTAGCOND[MELTAGCOND["melCondALL"] = 7] = "melCondALL";
-            })(MELTAGCOND || _export('MELTAGCOND', MELTAGCOND = {}));
+            })(MELTAGCOND || _export("MELTAGCOND", MELTAGCOND = {}));
             ;
 
-            _export('MELTAGSYSTEM', MELTAGSYSTEM);
+            _export("MELTAGSYSTEM", MELTAGSYSTEM);
 
             (function (MELTAGSYSTEM) {
                 MELTAGSYSTEM[MELTAGSYSTEM["melSystemNOP"] = 0] = "melSystemNOP";
@@ -1629,10 +1637,10 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 MELTAGSYSTEM[MELTAGSYSTEM["melSystemExitSW"] = 5] = "melSystemExitSW";
                 MELTAGSYSTEM[MELTAGSYSTEM["melSystemExitLa"] = 6] = "melSystemExitLa";
                 MELTAGSYSTEM[MELTAGSYSTEM["melSystemExitSWLa"] = 7] = "melSystemExitSWLa";
-            })(MELTAGSYSTEM || _export('MELTAGSYSTEM', MELTAGSYSTEM = {}));
+            })(MELTAGSYSTEM || _export("MELTAGSYSTEM", MELTAGSYSTEM = {}));
             ;
 
-            _export('MELTAGSTACK', MELTAGSTACK);
+            _export("MELTAGSTACK", MELTAGSTACK);
 
             (function (MELTAGSTACK) {
                 MELTAGSTACK[MELTAGSTACK["melStackPUSHZ"] = 0] = "melStackPUSHZ";
@@ -1643,10 +1651,10 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 MELTAGSTACK[MELTAGSTACK["melStackPOPB"] = 5] = "melStackPOPB";
                 MELTAGSTACK[MELTAGSTACK["melStackPOPW"] = 6] = "melStackPOPW";
                 MELTAGSTACK[MELTAGSTACK["melStackXX7"] = 7] = "melStackXX7";
-            })(MELTAGSTACK || _export('MELTAGSTACK', MELTAGSTACK = {}));
+            })(MELTAGSTACK || _export("MELTAGSTACK", MELTAGSTACK = {}));
             ;
 
-            _export('MELTAGPRIMRET', MELTAGPRIMRET);
+            _export("MELTAGPRIMRET", MELTAGPRIMRET);
 
             (function (MELTAGPRIMRET) {
                 MELTAGPRIMRET[MELTAGPRIMRET["melPrimRetPRIM0"] = 0] = "melPrimRetPRIM0";
@@ -1657,10 +1665,10 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 MELTAGPRIMRET[MELTAGPRIMRET["melPrimRetRETI"] = 5] = "melPrimRetRETI";
                 MELTAGPRIMRET[MELTAGPRIMRET["melPrimRetRETO"] = 6] = "melPrimRetRETO";
                 MELTAGPRIMRET[MELTAGPRIMRET["melPrimRetRETIO"] = 7] = "melPrimRetRETIO";
-            })(MELTAGPRIMRET || _export('MELTAGPRIMRET', MELTAGPRIMRET = {}));
+            })(MELTAGPRIMRET || _export("MELTAGPRIMRET", MELTAGPRIMRET = {}));
             ;
 
-            _export('MELPARAMDEF', MELPARAMDEF);
+            _export("MELPARAMDEF", MELPARAMDEF);
 
             (function (MELPARAMDEF) {
                 MELPARAMDEF[MELPARAMDEF["melParamDefNone"] = 0] = "melParamDefNone";
@@ -1677,27 +1685,27 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 MELPARAMDEF[MELPARAMDEF["melParamDefWordOffsetPB"] = 38] = "melParamDefWordOffsetPB";
                 MELPARAMDEF[MELPARAMDEF["melParamDefWordOffsetPT"] = 39] = "melParamDefWordOffsetPT";
                 MELPARAMDEF[MELPARAMDEF["melParamDefWordCodeAddress"] = 40] = "melParamDefWordCodeAddress";
-            })(MELPARAMDEF || _export('MELPARAMDEF', MELPARAMDEF = {}));
+            })(MELPARAMDEF || _export("MELPARAMDEF", MELPARAMDEF = {}));
             ;
             ;
             MEL = function MEL() {
                 _classCallCheck(this, MEL);
             };
 
-            _export('MEL', MEL);
+            _export("MEL", MEL);
 
             MEL.melDecode = [];fillMelDecode();
             MELDecode = MEL.melDecode;
 
-            _export('MELDecode', MELDecode);
+            _export("MELDecode", MELDecode);
 
             MEL_CCR_Z = 0x01;
 
-            _export('MEL_CCR_Z', MEL_CCR_Z);
+            _export("MEL_CCR_Z", MEL_CCR_Z);
 
             MEL_CCR_C = 0x02;
 
-            _export('MEL_CCR_C', MEL_CCR_C);
+            _export("MEL_CCR_C", MEL_CCR_C);
 
             MELVirtualMachine = (function () {
                 function MELVirtualMachine() {
@@ -2264,7 +2272,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 };
 
                 _createClass(MELVirtualMachine, [{
-                    key: 'getDebug',
+                    key: "getDebug",
                     get: function get() {
                         return {
                             ramSegment: this.ramSegment,
@@ -2281,7 +2289,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return MELVirtualMachine;
             })();
 
-            _export('MELVirtualMachine', MELVirtualMachine);
+            _export("MELVirtualMachine", MELVirtualMachine);
 
             JSIMMultosApplet = function JSIMMultosApplet(codeArea, staticArea, sessionSize) {
                 _classCallCheck(this, JSIMMultosApplet);
@@ -2291,7 +2299,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 this.sessionSize = sessionSize;
             };
 
-            _export('JSIMMultosApplet', JSIMMultosApplet);
+            _export("JSIMMultosApplet", JSIMMultosApplet);
 
             JSIMMultosCard = (function () {
                 function JSIMMultosCard(config) {
@@ -2390,7 +2398,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 };
 
                 _createClass(JSIMMultosCard, [{
-                    key: 'isPowered',
+                    key: "isPowered",
                     get: function get() {
                         return this.powerIsOn;
                     }
@@ -2399,7 +2407,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return JSIMMultosCard;
             })();
 
-            _export('JSIMMultosCard', JSIMMultosCard);
+            _export("JSIMMultosCard", JSIMMultosCard);
 
             JSIMMultosCard.defaultConfig = {
                 romSize: 0,
@@ -2676,19 +2684,19 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return SecurityManager;
             })();
 
-            _export('SecurityManager', SecurityManager);
+            _export("SecurityManager", SecurityManager);
 
             ADC = function ADC() {
                 _classCallCheck(this, ADC);
             };
 
-            _export('ADC', ADC);
+            _export("ADC", ADC);
 
             ALC = function ALC() {
                 _classCallCheck(this, ALC);
             };
 
-            _export('ALC', ALC);
+            _export("ALC", ALC);
 
             ALU = (function () {
                 function ALU(attributes) {
@@ -2738,7 +2746,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 return ALU;
             })();
 
-            _export('ALU', ALU);
+            _export("ALU", ALU);
 
             KindBuilder.init(ALU, "MULTOS Application Load Unit").field("code", "Code Segment", ByteArray).field("data", "Data Segment", ByteArray).field("fci", "FCI Segment", ByteArray).field("dir", "DIR Segment", ByteArray);
         }

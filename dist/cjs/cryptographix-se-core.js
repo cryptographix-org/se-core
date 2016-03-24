@@ -373,7 +373,7 @@ var SlotProtocolHandler = (function () {
         var response = undefined;
         switch (hdr.method) {
             case "executeAPDU":
-                if (!(hdr.kind instanceof CommandAPDU)) break;
+                if (!(payload instanceof CommandAPDU)) break;
                 response = this.slot.executeAPDU(payload);
                 response.then(function (responseAPDU) {
                     var replyPacket = new _cryptographixSimCore.Message({ method: "executeAPDU" }, responseAPDU);
@@ -381,12 +381,20 @@ var SlotProtocolHandler = (function () {
                 });
                 break;
             case "powerOff":
+                response = this.slot.powerOff().then(function (respData) {
+                    receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, new _cryptographixSimCore.ByteArray()));
+                });
+                break;
             case "powerOn":
-            case "reset":
-                if (hdr.method == 'reset') response = this.slot.reset();else if (hdr.method == 'powerOn') response = this.slot.powerOn();else response = this.slot.powerOff();
-                response.then(function (respData) {
+                response = this.slot.powerOn().then(function (respData) {
                     receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, respData));
                 });
+                break;
+            case "reset":
+                response = this.slot.reset().then(function (respData) {
+                    receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, respData));
+                });
+                break;
             default:
                 response = Promise.reject(new Error("Invalid method" + hdr.method));
                 break;
@@ -401,707 +409,6 @@ var SlotProtocolHandler = (function () {
 })();
 
 exports.SlotProtocolHandler = SlotProtocolHandler;
-
-var Key = (function () {
-    function Key() {
-        _classCallCheck(this, Key);
-
-        this._type = 0;
-        this._size = -1;
-        this._componentArray = [];
-    }
-
-    Key.prototype.setType = function setType(keyType) {
-        this._type = keyType;
-    };
-
-    Key.prototype.getType = function getType() {
-        return this._type;
-    };
-
-    Key.prototype.setSize = function setSize(size) {
-        this._size = size;
-    };
-
-    Key.prototype.getSize = function getSize() {
-        return this._size;
-    };
-
-    Key.prototype.setComponent = function setComponent(comp, value) {
-        this._componentArray[comp] = value;
-    };
-
-    Key.prototype.getComponent = function getComponent(comp) {
-        return this._componentArray[comp];
-    };
-
-    return Key;
-})();
-
-exports.Key = Key;
-
-Key.SECRET = 1;
-Key.PRIVATE = 2;
-Key.PUBLIC = 3;
-Key.DES = 1;
-Key.AES = 2;
-Key.MODULUS = 3;
-Key.EXPONENT = 4;
-Key.CRT_P = 5;
-Key.CRT_Q = 6;
-Key.CRT_DP1 = 7;
-Key.CRT_DQ1 = 8;
-Key.CRT_PQ = 9;
-
-var Crypto = (function () {
-    function Crypto() {
-        _classCallCheck(this, Crypto);
-    }
-
-    Crypto.prototype.encrypt = function encrypt(key, mech, data) {
-        var k = key.getComponent(Key.SECRET).byteArray;
-        if (k.length == 16) {
-            var orig = k;
-            k = new _cryptographixSimCore.ByteArray([]).setLength(24);
-            k.setBytesAt(0, orig);
-            k.setBytesAt(16, orig.viewAt(0, 8));
-        }
-        var cryptoText = new _cryptographixSimCore.ByteArray(this.des(k.backingArray, data.byteArray.backingArray, 1, 0));
-        return new ByteString(cryptoText);
-    };
-
-    Crypto.prototype.decrypt = function decrypt(key, mech, data) {
-        return data;
-    };
-
-    Crypto.prototype.sign = function sign(key, mech, data, iv) {
-        var k = key.getComponent(Key.SECRET).byteArray;
-        var keyData = k;
-        if (k.length == 16) {
-            keyData = new _cryptographixSimCore.ByteArray();
-            keyData.setLength(24).setBytesAt(0, k).setBytesAt(16, k.bytesAt(0, 8));
-        }
-        if (iv == undefined) iv = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-        var cryptoText = new _cryptographixSimCore.ByteArray(this.des(keyData.backingArray, data.byteArray.backingArray, 1, 1, iv, 4));
-        return new ByteString(cryptoText).bytes(-8);
-    };
-
-    Crypto.prototype.des = function des(key, message, encrypt, mode, iv, padding) {
-        function des_createKeys(key) {
-            if (Crypto.desPC == undefined) {
-                Crypto.desPC = {
-                    pc2bytes0: new Uint32Array([0, 0x4, 0x20000000, 0x20000004, 0x10000, 0x10004, 0x20010000, 0x20010004, 0x200, 0x204, 0x20000200, 0x20000204, 0x10200, 0x10204, 0x20010200, 0x20010204]),
-                    pc2bytes1: new Uint32Array([0, 0x1, 0x100000, 0x100001, 0x4000000, 0x4000001, 0x4100000, 0x4100001, 0x100, 0x101, 0x100100, 0x100101, 0x4000100, 0x4000101, 0x4100100, 0x4100101]),
-                    pc2bytes2: new Uint32Array([0, 0x8, 0x800, 0x808, 0x1000000, 0x1000008, 0x1000800, 0x1000808, 0, 0x8, 0x800, 0x808, 0x1000000, 0x1000008, 0x1000800, 0x1000808]),
-                    pc2bytes3: new Uint32Array([0, 0x200000, 0x8000000, 0x8200000, 0x2000, 0x202000, 0x8002000, 0x8202000, 0x20000, 0x220000, 0x8020000, 0x8220000, 0x22000, 0x222000, 0x8022000, 0x8222000]),
-                    pc2bytes4: new Uint32Array([0, 0x40000, 0x10, 0x40010, 0, 0x40000, 0x10, 0x40010, 0x1000, 0x41000, 0x1010, 0x41010, 0x1000, 0x41000, 0x1010, 0x41010]),
-                    pc2bytes5: new Uint32Array([0, 0x400, 0x20, 0x420, 0, 0x400, 0x20, 0x420, 0x2000000, 0x2000400, 0x2000020, 0x2000420, 0x2000000, 0x2000400, 0x2000020, 0x2000420]),
-                    pc2bytes6: new Uint32Array([0, 0x10000000, 0x80000, 0x10080000, 0x2, 0x10000002, 0x80002, 0x10080002, 0, 0x10000000, 0x80000, 0x10080000, 0x2, 0x10000002, 0x80002, 0x10080002]),
-                    pc2bytes7: new Uint32Array([0, 0x10000, 0x800, 0x10800, 0x20000000, 0x20010000, 0x20000800, 0x20010800, 0x20000, 0x30000, 0x20800, 0x30800, 0x20020000, 0x20030000, 0x20020800, 0x20030800]),
-                    pc2bytes8: new Uint32Array([0, 0x40000, 0, 0x40000, 0x2, 0x40002, 0x2, 0x40002, 0x2000000, 0x2040000, 0x2000000, 0x2040000, 0x2000002, 0x2040002, 0x2000002, 0x2040002]),
-                    pc2bytes9: new Uint32Array([0, 0x10000000, 0x8, 0x10000008, 0, 0x10000000, 0x8, 0x10000008, 0x400, 0x10000400, 0x408, 0x10000408, 0x400, 0x10000400, 0x408, 0x10000408]),
-                    pc2bytes10: new Uint32Array([0, 0x20, 0, 0x20, 0x100000, 0x100020, 0x100000, 0x100020, 0x2000, 0x2020, 0x2000, 0x2020, 0x102000, 0x102020, 0x102000, 0x102020]),
-                    pc2bytes11: new Uint32Array([0, 0x1000000, 0x200, 0x1000200, 0x200000, 0x1200000, 0x200200, 0x1200200, 0x4000000, 0x5000000, 0x4000200, 0x5000200, 0x4200000, 0x5200000, 0x4200200, 0x5200200]),
-                    pc2bytes12: new Uint32Array([0, 0x1000, 0x8000000, 0x8001000, 0x80000, 0x81000, 0x8080000, 0x8081000, 0x10, 0x1010, 0x8000010, 0x8001010, 0x80010, 0x81010, 0x8080010, 0x8081010]),
-                    pc2bytes13: new Uint32Array([0, 0x4, 0x100, 0x104, 0, 0x4, 0x100, 0x104, 0x1, 0x5, 0x101, 0x105, 0x1, 0x5, 0x101, 0x105])
-                };
-            }
-            var iterations = key.length > 8 ? 3 : 1;
-            var keys = new Uint32Array(32 * iterations);
-            var shifts = [0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0];
-            var lefttemp,
-                righttemp,
-                m = 0,
-                n = 0,
-                temp;
-            for (var j = 0; j < iterations; j++) {
-                left = key[m++] << 24 | key[m++] << 16 | key[m++] << 8 | key[m++];
-                right = key[m++] << 24 | key[m++] << 16 | key[m++] << 8 | key[m++];
-                temp = (left >>> 4 ^ right) & 0x0f0f0f0f;
-                right ^= temp;
-                left ^= temp << 4;
-                temp = (right >>> -16 ^ left) & 0x0000ffff;
-                left ^= temp;
-                right ^= temp << -16;
-                temp = (left >>> 2 ^ right) & 0x33333333;
-                right ^= temp;
-                left ^= temp << 2;
-                temp = (right >>> -16 ^ left) & 0x0000ffff;
-                left ^= temp;
-                right ^= temp << -16;
-                temp = (left >>> 1 ^ right) & 0x55555555;
-                right ^= temp;
-                left ^= temp << 1;
-                temp = (right >>> 8 ^ left) & 0x00ff00ff;
-                left ^= temp;
-                right ^= temp << 8;
-                temp = (left >>> 1 ^ right) & 0x55555555;
-                right ^= temp;
-                left ^= temp << 1;
-                temp = left << 8 | right >>> 20 & 0x000000f0;
-                left = right << 24 | right << 8 & 0xff0000 | right >>> 8 & 0xff00 | right >>> 24 & 0xf0;
-                right = temp;
-                for (var i = 0; i < shifts.length; i++) {
-                    if (shifts[i]) {
-                        left = left << 2 | left >>> 26;
-                        right = right << 2 | right >>> 26;
-                    } else {
-                        left = left << 1 | left >>> 27;
-                        right = right << 1 | right >>> 27;
-                    }
-                    left &= -0xf;
-                    right &= -0xf;
-                    lefttemp = Crypto.desPC.pc2bytes0[left >>> 28] | Crypto.desPC.pc2bytes1[left >>> 24 & 0xf] | Crypto.desPC.pc2bytes2[left >>> 20 & 0xf] | Crypto.desPC.pc2bytes3[left >>> 16 & 0xf] | Crypto.desPC.pc2bytes4[left >>> 12 & 0xf] | Crypto.desPC.pc2bytes5[left >>> 8 & 0xf] | Crypto.desPC.pc2bytes6[left >>> 4 & 0xf];
-                    righttemp = Crypto.desPC.pc2bytes7[right >>> 28] | Crypto.desPC.pc2bytes8[right >>> 24 & 0xf] | Crypto.desPC.pc2bytes9[right >>> 20 & 0xf] | Crypto.desPC.pc2bytes10[right >>> 16 & 0xf] | Crypto.desPC.pc2bytes11[right >>> 12 & 0xf] | Crypto.desPC.pc2bytes12[right >>> 8 & 0xf] | Crypto.desPC.pc2bytes13[right >>> 4 & 0xf];
-                    temp = (righttemp >>> 16 ^ lefttemp) & 0x0000ffff;
-                    keys[n++] = lefttemp ^ temp;
-                    keys[n++] = righttemp ^ temp << 16;
-                }
-            }
-            return keys;
-        }
-        if (Crypto.desSP == undefined) {
-            Crypto.desSP = {
-                spfunction1: new Uint32Array([0x1010400, 0, 0x10000, 0x1010404, 0x1010004, 0x10404, 0x4, 0x10000, 0x400, 0x1010400, 0x1010404, 0x400, 0x1000404, 0x1010004, 0x1000000, 0x4, 0x404, 0x1000400, 0x1000400, 0x10400, 0x10400, 0x1010000, 0x1010000, 0x1000404, 0x10004, 0x1000004, 0x1000004, 0x10004, 0, 0x404, 0x10404, 0x1000000, 0x10000, 0x1010404, 0x4, 0x1010000, 0x1010400, 0x1000000, 0x1000000, 0x400, 0x1010004, 0x10000, 0x10400, 0x1000004, 0x400, 0x4, 0x1000404, 0x10404, 0x1010404, 0x10004, 0x1010000, 0x1000404, 0x1000004, 0x404, 0x10404, 0x1010400, 0x404, 0x1000400, 0x1000400, 0, 0x10004, 0x10400, 0, 0x1010004]),
-                spfunction2: new Uint32Array([-0x7fef7fe0, -0x7fff8000, 0x8000, 0x108020, 0x100000, 0x20, -0x7fefffe0, -0x7fff7fe0, -0x7fffffe0, -0x7fef7fe0, -0x7fef8000, -0x80000000, -0x7fff8000, 0x100000, 0x20, -0x7fefffe0, 0x108000, 0x100020, -0x7fff7fe0, 0, -0x80000000, 0x8000, 0x108020, -0x7ff00000, 0x100020, -0x7fffffe0, 0, 0x108000, 0x8020, -0x7fef8000, -0x7ff00000, 0x8020, 0, 0x108020, -0x7fefffe0, 0x100000, -0x7fff7fe0, -0x7ff00000, -0x7fef8000, 0x8000, -0x7ff00000, -0x7fff8000, 0x20, -0x7fef7fe0, 0x108020, 0x20, 0x8000, -0x80000000, 0x8020, -0x7fef8000, 0x100000, -0x7fffffe0, 0x100020, -0x7fff7fe0, -0x7fffffe0, 0x100020, 0x108000, 0, -0x7fff8000, 0x8020, -0x80000000, -0x7fefffe0, -0x7fef7fe0, 0x108000]),
-                spfunction3: new Uint32Array([0x208, 0x8020200, 0, 0x8020008, 0x8000200, 0, 0x20208, 0x8000200, 0x20008, 0x8000008, 0x8000008, 0x20000, 0x8020208, 0x20008, 0x8020000, 0x208, 0x8000000, 0x8, 0x8020200, 0x200, 0x20200, 0x8020000, 0x8020008, 0x20208, 0x8000208, 0x20200, 0x20000, 0x8000208, 0x8, 0x8020208, 0x200, 0x8000000, 0x8020200, 0x8000000, 0x20008, 0x208, 0x20000, 0x8020200, 0x8000200, 0, 0x200, 0x20008, 0x8020208, 0x8000200, 0x8000008, 0x200, 0, 0x8020008, 0x8000208, 0x20000, 0x8000000, 0x8020208, 0x8, 0x20208, 0x20200, 0x8000008, 0x8020000, 0x8000208, 0x208, 0x8020000, 0x20208, 0x8, 0x8020008, 0x20200]),
-                spfunction4: new Uint32Array([0x802001, 0x2081, 0x2081, 0x80, 0x802080, 0x800081, 0x800001, 0x2001, 0, 0x802000, 0x802000, 0x802081, 0x81, 0, 0x800080, 0x800001, 0x1, 0x2000, 0x800000, 0x802001, 0x80, 0x800000, 0x2001, 0x2080, 0x800081, 0x1, 0x2080, 0x800080, 0x2000, 0x802080, 0x802081, 0x81, 0x800080, 0x800001, 0x802000, 0x802081, 0x81, 0, 0, 0x802000, 0x2080, 0x800080, 0x800081, 0x1, 0x802001, 0x2081, 0x2081, 0x80, 0x802081, 0x81, 0x1, 0x2000, 0x800001, 0x2001, 0x802080, 0x800081, 0x2001, 0x2080, 0x800000, 0x802001, 0x80, 0x800000, 0x2000, 0x802080]),
-                spfunction5: new Uint32Array([0x100, 0x2080100, 0x2080000, 0x42000100, 0x80000, 0x100, 0x40000000, 0x2080000, 0x40080100, 0x80000, 0x2000100, 0x40080100, 0x42000100, 0x42080000, 0x80100, 0x40000000, 0x2000000, 0x40080000, 0x40080000, 0, 0x40000100, 0x42080100, 0x42080100, 0x2000100, 0x42080000, 0x40000100, 0, 0x42000000, 0x2080100, 0x2000000, 0x42000000, 0x80100, 0x80000, 0x42000100, 0x100, 0x2000000, 0x40000000, 0x2080000, 0x42000100, 0x40080100, 0x2000100, 0x40000000, 0x42080000, 0x2080100, 0x40080100, 0x100, 0x2000000, 0x42080000, 0x42080100, 0x80100, 0x42000000, 0x42080100, 0x2080000, 0, 0x40080000, 0x42000000, 0x80100, 0x2000100, 0x40000100, 0x80000, 0, 0x40080000, 0x2080100, 0x40000100]),
-                spfunction6: new Uint32Array([0x20000010, 0x20400000, 0x4000, 0x20404010, 0x20400000, 0x10, 0x20404010, 0x400000, 0x20004000, 0x404010, 0x400000, 0x20000010, 0x400010, 0x20004000, 0x20000000, 0x4010, 0, 0x400010, 0x20004010, 0x4000, 0x404000, 0x20004010, 0x10, 0x20400010, 0x20400010, 0, 0x404010, 0x20404000, 0x4010, 0x404000, 0x20404000, 0x20000000, 0x20004000, 0x10, 0x20400010, 0x404000, 0x20404010, 0x400000, 0x4010, 0x20000010, 0x400000, 0x20004000, 0x20000000, 0x4010, 0x20000010, 0x20404010, 0x404000, 0x20400000, 0x404010, 0x20404000, 0, 0x20400010, 0x10, 0x4000, 0x20400000, 0x404010, 0x4000, 0x400010, 0x20004010, 0, 0x20404000, 0x20000000, 0x400010, 0x20004010]),
-                spfunction7: new Uint32Array([0x200000, 0x4200002, 0x4000802, 0, 0x800, 0x4000802, 0x200802, 0x4200800, 0x4200802, 0x200000, 0, 0x4000002, 0x2, 0x4000000, 0x4200002, 0x802, 0x4000800, 0x200802, 0x200002, 0x4000800, 0x4000002, 0x4200000, 0x4200800, 0x200002, 0x4200000, 0x800, 0x802, 0x4200802, 0x200800, 0x2, 0x4000000, 0x200800, 0x4000000, 0x200800, 0x200000, 0x4000802, 0x4000802, 0x4200002, 0x4200002, 0x2, 0x200002, 0x4000000, 0x4000800, 0x200000, 0x4200800, 0x802, 0x200802, 0x4200800, 0x802, 0x4000002, 0x4200802, 0x4200000, 0x200800, 0, 0x2, 0x4200802, 0, 0x200802, 0x4200000, 0x800, 0x4000002, 0x4000800, 0x800, 0x200002]),
-                spfunction8: new Uint32Array([0x10001040, 0x1000, 0x40000, 0x10041040, 0x10000000, 0x10001040, 0x40, 0x10000000, 0x40040, 0x10040000, 0x10041040, 0x41000, 0x10041000, 0x41040, 0x1000, 0x40, 0x10040000, 0x10000040, 0x10001000, 0x1040, 0x41000, 0x40040, 0x10040040, 0x10041000, 0x1040, 0, 0, 0x10040040, 0x10000040, 0x10001000, 0x41040, 0x40000, 0x41040, 0x40000, 0x10041000, 0x1000, 0x40, 0x10040040, 0x1000, 0x41040, 0x10001000, 0x40, 0x10000040, 0x10040000, 0x10040040, 0x10000000, 0x40000, 0x10001040, 0, 0x10041040, 0x40040, 0x10000040, 0x10040000, 0x10001000, 0x10001040, 0, 0x10041040, 0x41000, 0x41000, 0x1040, 0x1040, 0x40040, 0x10000000, 0x10041000])
-            };
-        }
-        var keys = des_createKeys(key);
-        var m = 0,
-            i,
-            j,
-            temp,
-            left,
-            right,
-            looping;
-        var cbcleft, cbcleft2, cbcright, cbcright2;
-        var len = message.length;
-        var iterations = keys.length == 32 ? 3 : 9;
-        if (iterations == 3) {
-            looping = encrypt ? [0, 32, 2] : [30, -2, -2];
-        } else {
-            looping = encrypt ? [0, 32, 2, 62, 30, -2, 64, 96, 2] : [94, 62, -2, 32, 64, 2, 30, -2, -2];
-        }
-        if (padding != undefined && padding != 4) {
-            var unpaddedMessage = message;
-            var pad = 8 - len % 8;
-            message = new Uint8Array(len + 8);
-            message.set(unpaddedMessage, 0);
-            switch (padding) {
-                case 0:
-                    message.set(new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]), len);
-                    break;
-                case 1:
-                    {
-                        message.set(new Uint8Array([pad, pad, pad, pad, pad, pad, pad, pad]), 8);
-                        if (pad == 8) len += 8;
-                        break;
-                    }
-                case 2:
-                    message.set(new Uint8Array([0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20]), 8);
-                    break;
-            }
-            len += 8 - len % 8;
-        }
-        var result = new Uint8Array(len);
-        if (mode == 1) {
-            var m = 0;
-            cbcleft = iv[m++] << 24 | iv[m++] << 16 | iv[m++] << 8 | iv[m++];
-            cbcright = iv[m++] << 24 | iv[m++] << 16 | iv[m++] << 8 | iv[m++];
-        }
-        var rm = 0;
-        while (m < len) {
-            left = message[m++] << 24 | message[m++] << 16 | message[m++] << 8 | message[m++];
-            right = message[m++] << 24 | message[m++] << 16 | message[m++] << 8 | message[m++];
-            if (mode == 1) {
-                if (encrypt) {
-                    left ^= cbcleft;
-                    right ^= cbcright;
-                } else {
-                    cbcleft2 = cbcleft;
-                    cbcright2 = cbcright;
-                    cbcleft = left;
-                    cbcright = right;
-                }
-            }
-            temp = (left >>> 4 ^ right) & 0x0f0f0f0f;
-            right ^= temp;
-            left ^= temp << 4;
-            temp = (left >>> 16 ^ right) & 0x0000ffff;
-            right ^= temp;
-            left ^= temp << 16;
-            temp = (right >>> 2 ^ left) & 0x33333333;
-            left ^= temp;
-            right ^= temp << 2;
-            temp = (right >>> 8 ^ left) & 0x00ff00ff;
-            left ^= temp;
-            right ^= temp << 8;
-            temp = (left >>> 1 ^ right) & 0x55555555;
-            right ^= temp;
-            left ^= temp << 1;
-            left = left << 1 | left >>> 31;
-            right = right << 1 | right >>> 31;
-            for (j = 0; j < iterations; j += 3) {
-                var endloop = looping[j + 1];
-                var loopinc = looping[j + 2];
-                for (i = looping[j]; i != endloop; i += loopinc) {
-                    var right1 = right ^ keys[i];
-                    var right2 = (right >>> 4 | right << 28) ^ keys[i + 1];
-                    temp = left;
-                    left = right;
-                    right = temp ^ (Crypto.desSP.spfunction2[right1 >>> 24 & 0x3f] | Crypto.desSP.spfunction4[right1 >>> 16 & 0x3f] | Crypto.desSP.spfunction6[right1 >>> 8 & 0x3f] | Crypto.desSP.spfunction8[right1 & 0x3f] | Crypto.desSP.spfunction1[right2 >>> 24 & 0x3f] | Crypto.desSP.spfunction3[right2 >>> 16 & 0x3f] | Crypto.desSP.spfunction5[right2 >>> 8 & 0x3f] | Crypto.desSP.spfunction7[right2 & 0x3f]);
-                }
-                temp = left;
-                left = right;
-                right = temp;
-            }
-            left = left >>> 1 | left << 31;
-            right = right >>> 1 | right << 31;
-            temp = (left >>> 1 ^ right) & 0x55555555;
-            right ^= temp;
-            left ^= temp << 1;
-            temp = (right >>> 8 ^ left) & 0x00ff00ff;
-            left ^= temp;
-            right ^= temp << 8;
-            temp = (right >>> 2 ^ left) & 0x33333333;
-            left ^= temp;
-            right ^= temp << 2;
-            temp = (left >>> 16 ^ right) & 0x0000ffff;
-            right ^= temp;
-            left ^= temp << 16;
-            temp = (left >>> 4 ^ right) & 0x0f0f0f0f;
-            right ^= temp;
-            left ^= temp << 4;
-            if (mode == 1) {
-                if (encrypt) {
-                    cbcleft = left;
-                    cbcright = right;
-                } else {
-                    left ^= cbcleft2;
-                    right ^= cbcright2;
-                }
-            }
-            result.set(new Uint8Array([left >>> 24 & 0xff, left >>> 16 & 0xff, left >>> 8 & 0xff, left & 0xff, right >>> 24 & 0xff, right >>> 16 & 0xff, right >>> 8 & 0xff, right & 0xff]), rm);
-            rm += 8;
-        }
-        return result;
-    };
-
-    Crypto.prototype.verify = function verify(key, mech, data, signature, iv) {
-        return data;
-    };
-
-    Crypto.prototype.digest = function digest(mech, data) {
-        return data;
-    };
-
-    return Crypto;
-})();
-
-exports.Crypto = Crypto;
-
-Crypto.DES_CBC = 2;
-Crypto.DES_ECB = 5;
-Crypto.DES_MAC = 8;
-Crypto.DES_MAC_EMV = 9;
-Crypto.ISO9797_METHOD_1 = 11;
-Crypto.ISO9797_METHOD_2 = 12;
-Crypto.MD5 = 13;
-Crypto.RSA = 14;
-Crypto.SHA_1 = 15;
-Crypto.SHA_512 = 25;
-
-var ByteString = (function () {
-    function ByteString(value, encoding) {
-        _classCallCheck(this, ByteString);
-
-        if (!encoding) {
-            if (value instanceof ByteString) this.byteArray = value.byteArray.clone();else if (value instanceof _cryptographixSimCore.ByteArray) this.byteArray = value.clone();
-        } else {
-            switch (encoding) {
-                case ByteString.HEX:
-                    this.byteArray = new _cryptographixSimCore.ByteArray(value, _cryptographixSimCore.ByteArray.HEX);
-                    break;
-                default:
-                    throw "ByteString unsupported encoding";
-            }
-        }
-    }
-
-    ByteString.prototype.bytes = function bytes(offset, count) {
-        return new ByteString(this.byteArray.viewAt(offset, count));
-    };
-
-    ByteString.prototype.byteAt = function byteAt(offset) {
-        return this.byteArray.byteAt(offset);
-    };
-
-    ByteString.prototype.equals = function equals(otherByteString) {};
-
-    ByteString.prototype.concat = function concat(value) {
-        this.byteArray.concat(value.byteArray);
-        return this;
-    };
-
-    ByteString.prototype.left = function left(count) {
-        return new ByteString(this.byteArray.viewAt(0));
-    };
-
-    ByteString.prototype.right = function right(count) {
-        return new ByteString(this.byteArray.viewAt(-count));
-    };
-
-    ByteString.prototype.not = function not() {
-        return new ByteString(this.byteArray.clone().not());
-    };
-
-    ByteString.prototype.and = function and(value) {
-        return new ByteString(this.byteArray.clone().and(value.byteArray));
-    };
-
-    ByteString.prototype.or = function or(value) {
-        return new ByteString(this.byteArray.clone().or(value.byteArray));
-    };
-
-    ByteString.prototype.pad = function pad(method, optional) {
-        var bs = new ByteBuffer(this.byteArray);
-        if (optional == undefined) optional = false;
-        if ((bs.length & 7) != 0 || !optional) {
-            var newlen = bs.length + 8 & ~7;
-            if (method == Crypto.ISO9797_METHOD_1) bs.append(0x80);
-            while (bs.length < newlen) bs.append(0x00);
-        }
-        return bs.toByteString();
-    };
-
-    ByteString.prototype.toString = function toString(encoding) {
-        return this.byteArray.toString(_cryptographixSimCore.ByteArray.HEX);
-    };
-
-    _createClass(ByteString, [{
-        key: 'length',
-        get: function get() {
-            return this.byteArray.length;
-        }
-    }]);
-
-    return ByteString;
-})();
-
-exports.ByteString = ByteString;
-
-ByteString.HEX = _cryptographixSimCore.ByteEncoding.HEX;
-ByteString.BASE64 = _cryptographixSimCore.ByteEncoding.BASE64;
-var HEX = ByteString.HEX;
-exports.HEX = HEX;
-var BASE64 = ByteString.BASE64;
-
-exports.BASE64 = BASE64;
-
-var ByteBuffer = (function () {
-    function ByteBuffer(value, encoding) {
-        _classCallCheck(this, ByteBuffer);
-
-        if (value instanceof _cryptographixSimCore.ByteArray) {
-            this.byteArray = value.clone();
-        } else if (value instanceof ByteString) {
-            this.byteArray = value.byteArray.clone();
-        } else if (encoding != undefined) {
-            this.byteArray = new ByteString(value, encoding).byteArray.clone();
-        } else this.byteArray = new _cryptographixSimCore.ByteArray([]);
-    }
-
-    ByteBuffer.prototype.toByteString = function toByteString() {
-        return new ByteString(this.byteArray);
-    };
-
-    ByteBuffer.prototype.clear = function clear() {
-        this.byteArray = new _cryptographixSimCore.ByteArray([]);
-    };
-
-    ByteBuffer.prototype.append = function append(value) {
-        var valueArray = undefined;
-        if (value instanceof ByteString || value instanceof ByteBuffer) {
-            valueArray = value.byteArray;
-        } else if (typeof value == "number") {
-            valueArray = new _cryptographixSimCore.ByteArray([value & 0xff]);
-        }
-        this.byteArray.concat(valueArray);
-        return this;
-    };
-
-    _createClass(ByteBuffer, [{
-        key: 'length',
-        get: function get() {
-            return this.byteArray.length;
-        }
-    }]);
-
-    return ByteBuffer;
-})();
-
-exports.ByteBuffer = ByteBuffer;
-
-var TLV = (function () {
-    function TLV(tag, value, encoding) {
-        _classCallCheck(this, TLV);
-
-        this.tlv = new BaseTLV(tag, value.byteArray, encoding);
-        this.encoding = encoding;
-    }
-
-    TLV.prototype.getTLV = function getTLV() {
-        return new ByteString(this.tlv.byteArray);
-    };
-
-    TLV.prototype.getTag = function getTag() {
-        return this.tlv.tag;
-    };
-
-    TLV.prototype.getValue = function getValue() {
-        return new ByteString(this.tlv.value);
-    };
-
-    TLV.prototype.getL = function getL() {
-        var info = BaseTLV.parseTLV(this.tlv.byteArray, this.encoding);
-        return new ByteString(this.tlv.byteArray.viewAt(info.lenOffset, info.valueOffset));
-    };
-
-    TLV.prototype.getLV = function getLV() {
-        var info = BaseTLV.parseTLV(this.tlv.byteArray, this.encoding);
-        return new ByteString(this.tlv.byteArray.viewAt(info.lenOffset, info.valueOffset + info.len));
-    };
-
-    TLV.parseTLV = function parseTLV(buffer, encoding) {
-        var info = BaseTLV.parseTLV(buffer.byteArray, encoding);
-        return {
-            tag: info.tag,
-            len: info.len,
-            value: new ByteString(info.value),
-            lenOffset: info.lenOffset,
-            valueOffset: info.valueOffset
-        };
-    };
-
-    return TLV;
-})();
-
-exports.TLV = TLV;
-
-TLV.EMV = BaseTLV.Encodings.EMV;
-TLV.DGI = BaseTLV.Encodings.DGI;
-
-var TLVList = (function () {
-    function TLVList(tlvStream, encoding) {
-        _classCallCheck(this, TLVList);
-
-        this._tlvs = [];
-        var off = 0;
-        while (off < tlvStream.length) {
-            var tlvInfo = TLV.parseTLV(tlvStream.bytes(off), encoding);
-            if (tlvInfo == null) {
-                break;
-            } else {
-                if (tlvInfo.valueOffset == 0) break;
-                this._tlvs.push(new TLV(tlvInfo.tag, tlvInfo.value, encoding));
-                off += tlvInfo.valueOffset + tlvInfo.len;
-            }
-        }
-    }
-
-    TLVList.prototype.index = function index(_index) {
-        return this._tlvs[_index];
-    };
-
-    return TLVList;
-})();
-
-exports.TLVList = TLVList;
-
-var JSSimulatedSlot = (function () {
-    function JSSimulatedSlot() {
-        _classCallCheck(this, JSSimulatedSlot);
-    }
-
-    JSSimulatedSlot.prototype.OnMessage = function OnMessage(e) {
-        if (this.stop) return;
-        if (e.data.command == "debug") {
-            console.log(e.data.data);
-        } else if (e.data.command == "executeAPDU") {
-            if (this.onAPDUResponse) {
-                var bs = e.data.data,
-                    len = bs.length;
-                this.onAPDUResponse(bs[len - 2] << 8 | bs[len - 1], len > 2 ? new _cryptographixSimCore.ByteArray(bs.subarray(0, len - 2)) : null);
-            }
-        } else {
-            console.log("cmd: " + e.data.command + " data: " + e.data.data);
-        }
-    };
-
-    JSSimulatedSlot.prototype.init = function init() {
-        this.cardWorker = new Worker("js/SmartCardSlotSimulator/SmartCardSlotWorker.js");
-        this.cardWorker.onmessage = this.OnMessage.bind(this);
-        this.cardWorker.onerror = function (e) {};
-    };
-
-    JSSimulatedSlot.prototype.sendToWorker = function sendToWorker(command, data) {
-        this.cardWorker.postMessage({
-            "command": command,
-            "data": data
-        });
-    };
-
-    JSSimulatedSlot.prototype.executeAPDUCommand = function executeAPDUCommand(bCLA, bINS, bP1, bP2, commandData, wLe, onAPDUResponse) {
-        var cmd = [bCLA, bINS, bP1, bP2];
-        var len = 4;
-        var bsCommandData = commandData instanceof _cryptographixSimCore.ByteArray ? commandData : new _cryptographixSimCore.ByteArray(commandData, _cryptographixSimCore.ByteArray.HEX);
-        if (bsCommandData.length > 0) {
-            cmd[len++] = bsCommandData.length;
-            for (var i = 0; i < bsCommandData.length; ++i) cmd[len++] = bsCommandData.byteAt(i);
-        } else if (wLe != undefined) cmd[len++] = wLe & 0xFF;
-        this.sendToWorker("executeAPDU", cmd);
-        this.onAPDUResponse = onAPDUResponse;
-        return;
-    };
-
-    return JSSimulatedSlot;
-})();
-
-var JSIMScriptApplet = (function () {
-    function JSIMScriptApplet() {
-        _classCallCheck(this, JSIMScriptApplet);
-    }
-
-    JSIMScriptApplet.prototype.selectApplication = function selectApplication(commandAPDU) {
-        return Promise.resolve(new ResponseAPDU({ sw: 0x9000 }));
-    };
-
-    JSIMScriptApplet.prototype.deselectApplication = function deselectApplication() {};
-
-    JSIMScriptApplet.prototype.executeAPDU = function executeAPDU(commandAPDU) {
-        return Promise.resolve(new ResponseAPDU({ sw: 0x6D00 }));
-    };
-
-    return JSIMScriptApplet;
-})();
-
-exports.JSIMScriptApplet = JSIMScriptApplet;
-
-var JSIMScriptCard = (function () {
-    function JSIMScriptCard() {
-        _classCallCheck(this, JSIMScriptCard);
-
-        this.applets = [];
-        this._atr = new _cryptographixSimCore.ByteArray([]);
-    }
-
-    JSIMScriptCard.prototype.loadApplication = function loadApplication(aid, applet) {
-        this.applets.push({ aid: aid, applet: applet });
-    };
-
-    JSIMScriptCard.prototype.powerOn = function powerOn() {
-        this._powerIsOn = true;
-        return Promise.resolve(this._atr);
-    };
-
-    JSIMScriptCard.prototype.powerOff = function powerOff() {
-        this._powerIsOn = false;
-        this.selectedApplet = undefined;
-        return Promise.resolve();
-    };
-
-    JSIMScriptCard.prototype.reset = function reset() {
-        this._powerIsOn = true;
-        this.selectedApplet = undefined;
-        return Promise.resolve(this._atr);
-    };
-
-    JSIMScriptCard.prototype.exchangeAPDU = function exchangeAPDU(commandAPDU) {
-        if (commandAPDU.INS == 0xA4) {
-            if (this.selectedApplet) {
-                this.selectedApplet.deselectApplication();
-                this.selectedApplet = undefined;
-            }
-            this.selectedApplet = this.applets[0].applet;
-            return this.selectedApplet.selectApplication(commandAPDU);
-        }
-        return this.selectedApplet.executeAPDU(commandAPDU);
-    };
-
-    _createClass(JSIMScriptCard, [{
-        key: 'isPowered',
-        get: function get() {
-            return this._powerIsOn;
-        }
-    }]);
-
-    return JSIMScriptCard;
-})();
-
-exports.JSIMScriptCard = JSIMScriptCard;
-
-var JSIMSlot = (function () {
-    function JSIMSlot(card) {
-        _classCallCheck(this, JSIMSlot);
-
-        this.card = card;
-    }
-
-    JSIMSlot.prototype.powerOn = function powerOn() {
-        if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
-        return this.card.powerOn();
-    };
-
-    JSIMSlot.prototype.powerOff = function powerOff() {
-        if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
-        return this.card.powerOff();
-    };
-
-    JSIMSlot.prototype.reset = function reset() {
-        if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
-        return this.card.reset();
-    };
-
-    JSIMSlot.prototype.executeAPDU = function executeAPDU(commandAPDU) {
-        if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
-        if (!this.isPowered) return Promise.reject(new Error("JSIM: Card unpowered"));
-        return this.card.exchangeAPDU(commandAPDU);
-    };
-
-    JSIMSlot.prototype.insertCard = function insertCard(card) {
-        if (this.card) this.ejectCard();
-        this.card = card;
-    };
-
-    JSIMSlot.prototype.ejectCard = function ejectCard() {
-        if (this.card) {
-            if (this.card.isPowered) this.card.powerOff();
-            this.card = undefined;
-        }
-    };
-
-    _createClass(JSIMSlot, [{
-        key: 'isPresent',
-        get: function get() {
-            return !!this.card;
-        }
-    }, {
-        key: 'isPowered',
-        get: function get() {
-            return this.isPresent && this.card.isPowered;
-        }
-    }]);
-
-    return JSIMSlot;
-})();
-
-exports.JSIMSlot = JSIMSlot;
 
 function hex2(val) {
     return ("00" + val.toString(16).toUpperCase()).substr(-2);
@@ -2713,3 +2020,704 @@ var ALU = (function () {
 exports.ALU = ALU;
 
 _cryptographixSimCore.KindBuilder.init(ALU, "MULTOS Application Load Unit").field("code", "Code Segment", _cryptographixSimCore.ByteArray).field("data", "Data Segment", _cryptographixSimCore.ByteArray).field("fci", "FCI Segment", _cryptographixSimCore.ByteArray).field("dir", "DIR Segment", _cryptographixSimCore.ByteArray);
+
+var Key = (function () {
+    function Key() {
+        _classCallCheck(this, Key);
+
+        this._type = 0;
+        this._size = -1;
+        this._componentArray = [];
+    }
+
+    Key.prototype.setType = function setType(keyType) {
+        this._type = keyType;
+    };
+
+    Key.prototype.getType = function getType() {
+        return this._type;
+    };
+
+    Key.prototype.setSize = function setSize(size) {
+        this._size = size;
+    };
+
+    Key.prototype.getSize = function getSize() {
+        return this._size;
+    };
+
+    Key.prototype.setComponent = function setComponent(comp, value) {
+        this._componentArray[comp] = value;
+    };
+
+    Key.prototype.getComponent = function getComponent(comp) {
+        return this._componentArray[comp];
+    };
+
+    return Key;
+})();
+
+exports.Key = Key;
+
+Key.SECRET = 1;
+Key.PRIVATE = 2;
+Key.PUBLIC = 3;
+Key.DES = 1;
+Key.AES = 2;
+Key.MODULUS = 3;
+Key.EXPONENT = 4;
+Key.CRT_P = 5;
+Key.CRT_Q = 6;
+Key.CRT_DP1 = 7;
+Key.CRT_DQ1 = 8;
+Key.CRT_PQ = 9;
+
+var Crypto = (function () {
+    function Crypto() {
+        _classCallCheck(this, Crypto);
+    }
+
+    Crypto.prototype.encrypt = function encrypt(key, mech, data) {
+        var k = key.getComponent(Key.SECRET).byteArray;
+        if (k.length == 16) {
+            var orig = k;
+            k = new _cryptographixSimCore.ByteArray([]).setLength(24);
+            k.setBytesAt(0, orig);
+            k.setBytesAt(16, orig.viewAt(0, 8));
+        }
+        var cryptoText = new _cryptographixSimCore.ByteArray(this.des(k.backingArray, data.byteArray.backingArray, 1, 0));
+        return new ByteString(cryptoText);
+    };
+
+    Crypto.prototype.decrypt = function decrypt(key, mech, data) {
+        return data;
+    };
+
+    Crypto.prototype.sign = function sign(key, mech, data, iv) {
+        var k = key.getComponent(Key.SECRET).byteArray;
+        var keyData = k;
+        if (k.length == 16) {
+            keyData = new _cryptographixSimCore.ByteArray();
+            keyData.setLength(24).setBytesAt(0, k).setBytesAt(16, k.bytesAt(0, 8));
+        }
+        if (iv == undefined) iv = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        var cryptoText = new _cryptographixSimCore.ByteArray(this.des(keyData.backingArray, data.byteArray.backingArray, 1, 1, iv, 4));
+        return new ByteString(cryptoText).bytes(-8);
+    };
+
+    Crypto.prototype.des = function des(key, message, encrypt, mode, iv, padding) {
+        function des_createKeys(key) {
+            if (Crypto.desPC == undefined) {
+                Crypto.desPC = {
+                    pc2bytes0: new Uint32Array([0, 0x4, 0x20000000, 0x20000004, 0x10000, 0x10004, 0x20010000, 0x20010004, 0x200, 0x204, 0x20000200, 0x20000204, 0x10200, 0x10204, 0x20010200, 0x20010204]),
+                    pc2bytes1: new Uint32Array([0, 0x1, 0x100000, 0x100001, 0x4000000, 0x4000001, 0x4100000, 0x4100001, 0x100, 0x101, 0x100100, 0x100101, 0x4000100, 0x4000101, 0x4100100, 0x4100101]),
+                    pc2bytes2: new Uint32Array([0, 0x8, 0x800, 0x808, 0x1000000, 0x1000008, 0x1000800, 0x1000808, 0, 0x8, 0x800, 0x808, 0x1000000, 0x1000008, 0x1000800, 0x1000808]),
+                    pc2bytes3: new Uint32Array([0, 0x200000, 0x8000000, 0x8200000, 0x2000, 0x202000, 0x8002000, 0x8202000, 0x20000, 0x220000, 0x8020000, 0x8220000, 0x22000, 0x222000, 0x8022000, 0x8222000]),
+                    pc2bytes4: new Uint32Array([0, 0x40000, 0x10, 0x40010, 0, 0x40000, 0x10, 0x40010, 0x1000, 0x41000, 0x1010, 0x41010, 0x1000, 0x41000, 0x1010, 0x41010]),
+                    pc2bytes5: new Uint32Array([0, 0x400, 0x20, 0x420, 0, 0x400, 0x20, 0x420, 0x2000000, 0x2000400, 0x2000020, 0x2000420, 0x2000000, 0x2000400, 0x2000020, 0x2000420]),
+                    pc2bytes6: new Uint32Array([0, 0x10000000, 0x80000, 0x10080000, 0x2, 0x10000002, 0x80002, 0x10080002, 0, 0x10000000, 0x80000, 0x10080000, 0x2, 0x10000002, 0x80002, 0x10080002]),
+                    pc2bytes7: new Uint32Array([0, 0x10000, 0x800, 0x10800, 0x20000000, 0x20010000, 0x20000800, 0x20010800, 0x20000, 0x30000, 0x20800, 0x30800, 0x20020000, 0x20030000, 0x20020800, 0x20030800]),
+                    pc2bytes8: new Uint32Array([0, 0x40000, 0, 0x40000, 0x2, 0x40002, 0x2, 0x40002, 0x2000000, 0x2040000, 0x2000000, 0x2040000, 0x2000002, 0x2040002, 0x2000002, 0x2040002]),
+                    pc2bytes9: new Uint32Array([0, 0x10000000, 0x8, 0x10000008, 0, 0x10000000, 0x8, 0x10000008, 0x400, 0x10000400, 0x408, 0x10000408, 0x400, 0x10000400, 0x408, 0x10000408]),
+                    pc2bytes10: new Uint32Array([0, 0x20, 0, 0x20, 0x100000, 0x100020, 0x100000, 0x100020, 0x2000, 0x2020, 0x2000, 0x2020, 0x102000, 0x102020, 0x102000, 0x102020]),
+                    pc2bytes11: new Uint32Array([0, 0x1000000, 0x200, 0x1000200, 0x200000, 0x1200000, 0x200200, 0x1200200, 0x4000000, 0x5000000, 0x4000200, 0x5000200, 0x4200000, 0x5200000, 0x4200200, 0x5200200]),
+                    pc2bytes12: new Uint32Array([0, 0x1000, 0x8000000, 0x8001000, 0x80000, 0x81000, 0x8080000, 0x8081000, 0x10, 0x1010, 0x8000010, 0x8001010, 0x80010, 0x81010, 0x8080010, 0x8081010]),
+                    pc2bytes13: new Uint32Array([0, 0x4, 0x100, 0x104, 0, 0x4, 0x100, 0x104, 0x1, 0x5, 0x101, 0x105, 0x1, 0x5, 0x101, 0x105])
+                };
+            }
+            var iterations = key.length > 8 ? 3 : 1;
+            var keys = new Uint32Array(32 * iterations);
+            var shifts = [0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0];
+            var lefttemp,
+                righttemp,
+                m = 0,
+                n = 0,
+                temp;
+            for (var j = 0; j < iterations; j++) {
+                left = key[m++] << 24 | key[m++] << 16 | key[m++] << 8 | key[m++];
+                right = key[m++] << 24 | key[m++] << 16 | key[m++] << 8 | key[m++];
+                temp = (left >>> 4 ^ right) & 0x0f0f0f0f;
+                right ^= temp;
+                left ^= temp << 4;
+                temp = (right >>> -16 ^ left) & 0x0000ffff;
+                left ^= temp;
+                right ^= temp << -16;
+                temp = (left >>> 2 ^ right) & 0x33333333;
+                right ^= temp;
+                left ^= temp << 2;
+                temp = (right >>> -16 ^ left) & 0x0000ffff;
+                left ^= temp;
+                right ^= temp << -16;
+                temp = (left >>> 1 ^ right) & 0x55555555;
+                right ^= temp;
+                left ^= temp << 1;
+                temp = (right >>> 8 ^ left) & 0x00ff00ff;
+                left ^= temp;
+                right ^= temp << 8;
+                temp = (left >>> 1 ^ right) & 0x55555555;
+                right ^= temp;
+                left ^= temp << 1;
+                temp = left << 8 | right >>> 20 & 0x000000f0;
+                left = right << 24 | right << 8 & 0xff0000 | right >>> 8 & 0xff00 | right >>> 24 & 0xf0;
+                right = temp;
+                for (var i = 0; i < shifts.length; i++) {
+                    if (shifts[i]) {
+                        left = left << 2 | left >>> 26;
+                        right = right << 2 | right >>> 26;
+                    } else {
+                        left = left << 1 | left >>> 27;
+                        right = right << 1 | right >>> 27;
+                    }
+                    left &= -0xf;
+                    right &= -0xf;
+                    lefttemp = Crypto.desPC.pc2bytes0[left >>> 28] | Crypto.desPC.pc2bytes1[left >>> 24 & 0xf] | Crypto.desPC.pc2bytes2[left >>> 20 & 0xf] | Crypto.desPC.pc2bytes3[left >>> 16 & 0xf] | Crypto.desPC.pc2bytes4[left >>> 12 & 0xf] | Crypto.desPC.pc2bytes5[left >>> 8 & 0xf] | Crypto.desPC.pc2bytes6[left >>> 4 & 0xf];
+                    righttemp = Crypto.desPC.pc2bytes7[right >>> 28] | Crypto.desPC.pc2bytes8[right >>> 24 & 0xf] | Crypto.desPC.pc2bytes9[right >>> 20 & 0xf] | Crypto.desPC.pc2bytes10[right >>> 16 & 0xf] | Crypto.desPC.pc2bytes11[right >>> 12 & 0xf] | Crypto.desPC.pc2bytes12[right >>> 8 & 0xf] | Crypto.desPC.pc2bytes13[right >>> 4 & 0xf];
+                    temp = (righttemp >>> 16 ^ lefttemp) & 0x0000ffff;
+                    keys[n++] = lefttemp ^ temp;
+                    keys[n++] = righttemp ^ temp << 16;
+                }
+            }
+            return keys;
+        }
+        if (Crypto.desSP == undefined) {
+            Crypto.desSP = {
+                spfunction1: new Uint32Array([0x1010400, 0, 0x10000, 0x1010404, 0x1010004, 0x10404, 0x4, 0x10000, 0x400, 0x1010400, 0x1010404, 0x400, 0x1000404, 0x1010004, 0x1000000, 0x4, 0x404, 0x1000400, 0x1000400, 0x10400, 0x10400, 0x1010000, 0x1010000, 0x1000404, 0x10004, 0x1000004, 0x1000004, 0x10004, 0, 0x404, 0x10404, 0x1000000, 0x10000, 0x1010404, 0x4, 0x1010000, 0x1010400, 0x1000000, 0x1000000, 0x400, 0x1010004, 0x10000, 0x10400, 0x1000004, 0x400, 0x4, 0x1000404, 0x10404, 0x1010404, 0x10004, 0x1010000, 0x1000404, 0x1000004, 0x404, 0x10404, 0x1010400, 0x404, 0x1000400, 0x1000400, 0, 0x10004, 0x10400, 0, 0x1010004]),
+                spfunction2: new Uint32Array([-0x7fef7fe0, -0x7fff8000, 0x8000, 0x108020, 0x100000, 0x20, -0x7fefffe0, -0x7fff7fe0, -0x7fffffe0, -0x7fef7fe0, -0x7fef8000, -0x80000000, -0x7fff8000, 0x100000, 0x20, -0x7fefffe0, 0x108000, 0x100020, -0x7fff7fe0, 0, -0x80000000, 0x8000, 0x108020, -0x7ff00000, 0x100020, -0x7fffffe0, 0, 0x108000, 0x8020, -0x7fef8000, -0x7ff00000, 0x8020, 0, 0x108020, -0x7fefffe0, 0x100000, -0x7fff7fe0, -0x7ff00000, -0x7fef8000, 0x8000, -0x7ff00000, -0x7fff8000, 0x20, -0x7fef7fe0, 0x108020, 0x20, 0x8000, -0x80000000, 0x8020, -0x7fef8000, 0x100000, -0x7fffffe0, 0x100020, -0x7fff7fe0, -0x7fffffe0, 0x100020, 0x108000, 0, -0x7fff8000, 0x8020, -0x80000000, -0x7fefffe0, -0x7fef7fe0, 0x108000]),
+                spfunction3: new Uint32Array([0x208, 0x8020200, 0, 0x8020008, 0x8000200, 0, 0x20208, 0x8000200, 0x20008, 0x8000008, 0x8000008, 0x20000, 0x8020208, 0x20008, 0x8020000, 0x208, 0x8000000, 0x8, 0x8020200, 0x200, 0x20200, 0x8020000, 0x8020008, 0x20208, 0x8000208, 0x20200, 0x20000, 0x8000208, 0x8, 0x8020208, 0x200, 0x8000000, 0x8020200, 0x8000000, 0x20008, 0x208, 0x20000, 0x8020200, 0x8000200, 0, 0x200, 0x20008, 0x8020208, 0x8000200, 0x8000008, 0x200, 0, 0x8020008, 0x8000208, 0x20000, 0x8000000, 0x8020208, 0x8, 0x20208, 0x20200, 0x8000008, 0x8020000, 0x8000208, 0x208, 0x8020000, 0x20208, 0x8, 0x8020008, 0x20200]),
+                spfunction4: new Uint32Array([0x802001, 0x2081, 0x2081, 0x80, 0x802080, 0x800081, 0x800001, 0x2001, 0, 0x802000, 0x802000, 0x802081, 0x81, 0, 0x800080, 0x800001, 0x1, 0x2000, 0x800000, 0x802001, 0x80, 0x800000, 0x2001, 0x2080, 0x800081, 0x1, 0x2080, 0x800080, 0x2000, 0x802080, 0x802081, 0x81, 0x800080, 0x800001, 0x802000, 0x802081, 0x81, 0, 0, 0x802000, 0x2080, 0x800080, 0x800081, 0x1, 0x802001, 0x2081, 0x2081, 0x80, 0x802081, 0x81, 0x1, 0x2000, 0x800001, 0x2001, 0x802080, 0x800081, 0x2001, 0x2080, 0x800000, 0x802001, 0x80, 0x800000, 0x2000, 0x802080]),
+                spfunction5: new Uint32Array([0x100, 0x2080100, 0x2080000, 0x42000100, 0x80000, 0x100, 0x40000000, 0x2080000, 0x40080100, 0x80000, 0x2000100, 0x40080100, 0x42000100, 0x42080000, 0x80100, 0x40000000, 0x2000000, 0x40080000, 0x40080000, 0, 0x40000100, 0x42080100, 0x42080100, 0x2000100, 0x42080000, 0x40000100, 0, 0x42000000, 0x2080100, 0x2000000, 0x42000000, 0x80100, 0x80000, 0x42000100, 0x100, 0x2000000, 0x40000000, 0x2080000, 0x42000100, 0x40080100, 0x2000100, 0x40000000, 0x42080000, 0x2080100, 0x40080100, 0x100, 0x2000000, 0x42080000, 0x42080100, 0x80100, 0x42000000, 0x42080100, 0x2080000, 0, 0x40080000, 0x42000000, 0x80100, 0x2000100, 0x40000100, 0x80000, 0, 0x40080000, 0x2080100, 0x40000100]),
+                spfunction6: new Uint32Array([0x20000010, 0x20400000, 0x4000, 0x20404010, 0x20400000, 0x10, 0x20404010, 0x400000, 0x20004000, 0x404010, 0x400000, 0x20000010, 0x400010, 0x20004000, 0x20000000, 0x4010, 0, 0x400010, 0x20004010, 0x4000, 0x404000, 0x20004010, 0x10, 0x20400010, 0x20400010, 0, 0x404010, 0x20404000, 0x4010, 0x404000, 0x20404000, 0x20000000, 0x20004000, 0x10, 0x20400010, 0x404000, 0x20404010, 0x400000, 0x4010, 0x20000010, 0x400000, 0x20004000, 0x20000000, 0x4010, 0x20000010, 0x20404010, 0x404000, 0x20400000, 0x404010, 0x20404000, 0, 0x20400010, 0x10, 0x4000, 0x20400000, 0x404010, 0x4000, 0x400010, 0x20004010, 0, 0x20404000, 0x20000000, 0x400010, 0x20004010]),
+                spfunction7: new Uint32Array([0x200000, 0x4200002, 0x4000802, 0, 0x800, 0x4000802, 0x200802, 0x4200800, 0x4200802, 0x200000, 0, 0x4000002, 0x2, 0x4000000, 0x4200002, 0x802, 0x4000800, 0x200802, 0x200002, 0x4000800, 0x4000002, 0x4200000, 0x4200800, 0x200002, 0x4200000, 0x800, 0x802, 0x4200802, 0x200800, 0x2, 0x4000000, 0x200800, 0x4000000, 0x200800, 0x200000, 0x4000802, 0x4000802, 0x4200002, 0x4200002, 0x2, 0x200002, 0x4000000, 0x4000800, 0x200000, 0x4200800, 0x802, 0x200802, 0x4200800, 0x802, 0x4000002, 0x4200802, 0x4200000, 0x200800, 0, 0x2, 0x4200802, 0, 0x200802, 0x4200000, 0x800, 0x4000002, 0x4000800, 0x800, 0x200002]),
+                spfunction8: new Uint32Array([0x10001040, 0x1000, 0x40000, 0x10041040, 0x10000000, 0x10001040, 0x40, 0x10000000, 0x40040, 0x10040000, 0x10041040, 0x41000, 0x10041000, 0x41040, 0x1000, 0x40, 0x10040000, 0x10000040, 0x10001000, 0x1040, 0x41000, 0x40040, 0x10040040, 0x10041000, 0x1040, 0, 0, 0x10040040, 0x10000040, 0x10001000, 0x41040, 0x40000, 0x41040, 0x40000, 0x10041000, 0x1000, 0x40, 0x10040040, 0x1000, 0x41040, 0x10001000, 0x40, 0x10000040, 0x10040000, 0x10040040, 0x10000000, 0x40000, 0x10001040, 0, 0x10041040, 0x40040, 0x10000040, 0x10040000, 0x10001000, 0x10001040, 0, 0x10041040, 0x41000, 0x41000, 0x1040, 0x1040, 0x40040, 0x10000000, 0x10041000])
+            };
+        }
+        var keys = des_createKeys(key);
+        var m = 0,
+            i,
+            j,
+            temp,
+            left,
+            right,
+            looping;
+        var cbcleft, cbcleft2, cbcright, cbcright2;
+        var len = message.length;
+        var iterations = keys.length == 32 ? 3 : 9;
+        if (iterations == 3) {
+            looping = encrypt ? [0, 32, 2] : [30, -2, -2];
+        } else {
+            looping = encrypt ? [0, 32, 2, 62, 30, -2, 64, 96, 2] : [94, 62, -2, 32, 64, 2, 30, -2, -2];
+        }
+        if (padding != undefined && padding != 4) {
+            var unpaddedMessage = message;
+            var pad = 8 - len % 8;
+            message = new Uint8Array(len + 8);
+            message.set(unpaddedMessage, 0);
+            switch (padding) {
+                case 0:
+                    message.set(new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]), len);
+                    break;
+                case 1:
+                    {
+                        message.set(new Uint8Array([pad, pad, pad, pad, pad, pad, pad, pad]), 8);
+                        if (pad == 8) len += 8;
+                        break;
+                    }
+                case 2:
+                    message.set(new Uint8Array([0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20]), 8);
+                    break;
+            }
+            len += 8 - len % 8;
+        }
+        var result = new Uint8Array(len);
+        if (mode == 1) {
+            var m = 0;
+            cbcleft = iv[m++] << 24 | iv[m++] << 16 | iv[m++] << 8 | iv[m++];
+            cbcright = iv[m++] << 24 | iv[m++] << 16 | iv[m++] << 8 | iv[m++];
+        }
+        var rm = 0;
+        while (m < len) {
+            left = message[m++] << 24 | message[m++] << 16 | message[m++] << 8 | message[m++];
+            right = message[m++] << 24 | message[m++] << 16 | message[m++] << 8 | message[m++];
+            if (mode == 1) {
+                if (encrypt) {
+                    left ^= cbcleft;
+                    right ^= cbcright;
+                } else {
+                    cbcleft2 = cbcleft;
+                    cbcright2 = cbcright;
+                    cbcleft = left;
+                    cbcright = right;
+                }
+            }
+            temp = (left >>> 4 ^ right) & 0x0f0f0f0f;
+            right ^= temp;
+            left ^= temp << 4;
+            temp = (left >>> 16 ^ right) & 0x0000ffff;
+            right ^= temp;
+            left ^= temp << 16;
+            temp = (right >>> 2 ^ left) & 0x33333333;
+            left ^= temp;
+            right ^= temp << 2;
+            temp = (right >>> 8 ^ left) & 0x00ff00ff;
+            left ^= temp;
+            right ^= temp << 8;
+            temp = (left >>> 1 ^ right) & 0x55555555;
+            right ^= temp;
+            left ^= temp << 1;
+            left = left << 1 | left >>> 31;
+            right = right << 1 | right >>> 31;
+            for (j = 0; j < iterations; j += 3) {
+                var endloop = looping[j + 1];
+                var loopinc = looping[j + 2];
+                for (i = looping[j]; i != endloop; i += loopinc) {
+                    var right1 = right ^ keys[i];
+                    var right2 = (right >>> 4 | right << 28) ^ keys[i + 1];
+                    temp = left;
+                    left = right;
+                    right = temp ^ (Crypto.desSP.spfunction2[right1 >>> 24 & 0x3f] | Crypto.desSP.spfunction4[right1 >>> 16 & 0x3f] | Crypto.desSP.spfunction6[right1 >>> 8 & 0x3f] | Crypto.desSP.spfunction8[right1 & 0x3f] | Crypto.desSP.spfunction1[right2 >>> 24 & 0x3f] | Crypto.desSP.spfunction3[right2 >>> 16 & 0x3f] | Crypto.desSP.spfunction5[right2 >>> 8 & 0x3f] | Crypto.desSP.spfunction7[right2 & 0x3f]);
+                }
+                temp = left;
+                left = right;
+                right = temp;
+            }
+            left = left >>> 1 | left << 31;
+            right = right >>> 1 | right << 31;
+            temp = (left >>> 1 ^ right) & 0x55555555;
+            right ^= temp;
+            left ^= temp << 1;
+            temp = (right >>> 8 ^ left) & 0x00ff00ff;
+            left ^= temp;
+            right ^= temp << 8;
+            temp = (right >>> 2 ^ left) & 0x33333333;
+            left ^= temp;
+            right ^= temp << 2;
+            temp = (left >>> 16 ^ right) & 0x0000ffff;
+            right ^= temp;
+            left ^= temp << 16;
+            temp = (left >>> 4 ^ right) & 0x0f0f0f0f;
+            right ^= temp;
+            left ^= temp << 4;
+            if (mode == 1) {
+                if (encrypt) {
+                    cbcleft = left;
+                    cbcright = right;
+                } else {
+                    left ^= cbcleft2;
+                    right ^= cbcright2;
+                }
+            }
+            result.set(new Uint8Array([left >>> 24 & 0xff, left >>> 16 & 0xff, left >>> 8 & 0xff, left & 0xff, right >>> 24 & 0xff, right >>> 16 & 0xff, right >>> 8 & 0xff, right & 0xff]), rm);
+            rm += 8;
+        }
+        return result;
+    };
+
+    Crypto.prototype.verify = function verify(key, mech, data, signature, iv) {
+        return data;
+    };
+
+    Crypto.prototype.digest = function digest(mech, data) {
+        return data;
+    };
+
+    return Crypto;
+})();
+
+exports.Crypto = Crypto;
+
+Crypto.DES_CBC = 2;
+Crypto.DES_ECB = 5;
+Crypto.DES_MAC = 8;
+Crypto.DES_MAC_EMV = 9;
+Crypto.ISO9797_METHOD_1 = 11;
+Crypto.ISO9797_METHOD_2 = 12;
+Crypto.MD5 = 13;
+Crypto.RSA = 14;
+Crypto.SHA_1 = 15;
+Crypto.SHA_512 = 25;
+
+var ByteString = (function () {
+    function ByteString(value, encoding) {
+        _classCallCheck(this, ByteString);
+
+        if (!encoding) {
+            if (value instanceof ByteString) this.byteArray = value.byteArray.clone();else if (value instanceof _cryptographixSimCore.ByteArray) this.byteArray = value.clone();
+        } else {
+            switch (encoding) {
+                case ByteString.HEX:
+                    this.byteArray = new _cryptographixSimCore.ByteArray(value, _cryptographixSimCore.ByteArray.HEX);
+                    break;
+                default:
+                    throw "ByteString unsupported encoding";
+            }
+        }
+    }
+
+    ByteString.prototype.bytes = function bytes(offset, count) {
+        return new ByteString(this.byteArray.viewAt(offset, count));
+    };
+
+    ByteString.prototype.byteAt = function byteAt(offset) {
+        return this.byteArray.byteAt(offset);
+    };
+
+    ByteString.prototype.equals = function equals(otherByteString) {};
+
+    ByteString.prototype.concat = function concat(value) {
+        this.byteArray.concat(value.byteArray);
+        return this;
+    };
+
+    ByteString.prototype.left = function left(count) {
+        return new ByteString(this.byteArray.viewAt(0));
+    };
+
+    ByteString.prototype.right = function right(count) {
+        return new ByteString(this.byteArray.viewAt(-count));
+    };
+
+    ByteString.prototype.not = function not() {
+        return new ByteString(this.byteArray.clone().not());
+    };
+
+    ByteString.prototype.and = function and(value) {
+        return new ByteString(this.byteArray.clone().and(value.byteArray));
+    };
+
+    ByteString.prototype.or = function or(value) {
+        return new ByteString(this.byteArray.clone().or(value.byteArray));
+    };
+
+    ByteString.prototype.pad = function pad(method, optional) {
+        var bs = new ByteBuffer(this.byteArray);
+        if (optional == undefined) optional = false;
+        if ((bs.length & 7) != 0 || !optional) {
+            var newlen = bs.length + 8 & ~7;
+            if (method == Crypto.ISO9797_METHOD_1) bs.append(0x80);
+            while (bs.length < newlen) bs.append(0x00);
+        }
+        return bs.toByteString();
+    };
+
+    ByteString.prototype.toString = function toString(encoding) {
+        return this.byteArray.toString(_cryptographixSimCore.ByteArray.HEX);
+    };
+
+    _createClass(ByteString, [{
+        key: 'length',
+        get: function get() {
+            return this.byteArray.length;
+        }
+    }]);
+
+    return ByteString;
+})();
+
+exports.ByteString = ByteString;
+
+ByteString.HEX = _cryptographixSimCore.ByteEncoding.HEX;
+ByteString.BASE64 = _cryptographixSimCore.ByteEncoding.BASE64;
+var HEX = ByteString.HEX;
+exports.HEX = HEX;
+var BASE64 = ByteString.BASE64;
+
+exports.BASE64 = BASE64;
+
+var ByteBuffer = (function () {
+    function ByteBuffer(value, encoding) {
+        _classCallCheck(this, ByteBuffer);
+
+        if (value instanceof _cryptographixSimCore.ByteArray) {
+            this.byteArray = value.clone();
+        } else if (value instanceof ByteString) {
+            this.byteArray = value.byteArray.clone();
+        } else if (encoding != undefined) {
+            this.byteArray = new ByteString(value, encoding).byteArray.clone();
+        } else this.byteArray = new _cryptographixSimCore.ByteArray([]);
+    }
+
+    ByteBuffer.prototype.toByteString = function toByteString() {
+        return new ByteString(this.byteArray);
+    };
+
+    ByteBuffer.prototype.clear = function clear() {
+        this.byteArray = new _cryptographixSimCore.ByteArray([]);
+    };
+
+    ByteBuffer.prototype.append = function append(value) {
+        var valueArray = undefined;
+        if (value instanceof ByteString || value instanceof ByteBuffer) {
+            valueArray = value.byteArray;
+        } else if (typeof value == "number") {
+            valueArray = new _cryptographixSimCore.ByteArray([value & 0xff]);
+        }
+        this.byteArray.concat(valueArray);
+        return this;
+    };
+
+    _createClass(ByteBuffer, [{
+        key: 'length',
+        get: function get() {
+            return this.byteArray.length;
+        }
+    }]);
+
+    return ByteBuffer;
+})();
+
+exports.ByteBuffer = ByteBuffer;
+
+var TLV = (function () {
+    function TLV(tag, value, encoding) {
+        _classCallCheck(this, TLV);
+
+        this.tlv = new BaseTLV(tag, value.byteArray, encoding);
+        this.encoding = encoding;
+    }
+
+    TLV.prototype.getTLV = function getTLV() {
+        return new ByteString(this.tlv.byteArray);
+    };
+
+    TLV.prototype.getTag = function getTag() {
+        return this.tlv.tag;
+    };
+
+    TLV.prototype.getValue = function getValue() {
+        return new ByteString(this.tlv.value);
+    };
+
+    TLV.prototype.getL = function getL() {
+        var info = BaseTLV.parseTLV(this.tlv.byteArray, this.encoding);
+        return new ByteString(this.tlv.byteArray.viewAt(info.lenOffset, info.valueOffset));
+    };
+
+    TLV.prototype.getLV = function getLV() {
+        var info = BaseTLV.parseTLV(this.tlv.byteArray, this.encoding);
+        return new ByteString(this.tlv.byteArray.viewAt(info.lenOffset, info.valueOffset + info.len));
+    };
+
+    TLV.parseTLV = function parseTLV(buffer, encoding) {
+        var info = BaseTLV.parseTLV(buffer.byteArray, encoding);
+        return {
+            tag: info.tag,
+            len: info.len,
+            value: new ByteString(info.value),
+            lenOffset: info.lenOffset,
+            valueOffset: info.valueOffset
+        };
+    };
+
+    return TLV;
+})();
+
+exports.TLV = TLV;
+
+TLV.EMV = BaseTLV.Encodings.EMV;
+TLV.DGI = BaseTLV.Encodings.DGI;
+
+var TLVList = (function () {
+    function TLVList(tlvStream, encoding) {
+        _classCallCheck(this, TLVList);
+
+        this._tlvs = [];
+        var off = 0;
+        while (off < tlvStream.length) {
+            var tlvInfo = TLV.parseTLV(tlvStream.bytes(off), encoding);
+            if (tlvInfo == null) {
+                break;
+            } else {
+                if (tlvInfo.valueOffset == 0) break;
+                this._tlvs.push(new TLV(tlvInfo.tag, tlvInfo.value, encoding));
+                off += tlvInfo.valueOffset + tlvInfo.len;
+            }
+        }
+    }
+
+    TLVList.prototype.index = function index(_index) {
+        return this._tlvs[_index];
+    };
+
+    return TLVList;
+})();
+
+exports.TLVList = TLVList;
+
+var JSSimulatedSlot = (function () {
+    function JSSimulatedSlot() {
+        _classCallCheck(this, JSSimulatedSlot);
+    }
+
+    JSSimulatedSlot.prototype.OnMessage = function OnMessage(e) {
+        if (this.stop) return;
+        if (e.data.command == "debug") {
+            console.log(e.data.data);
+        } else if (e.data.command == "executeAPDU") {
+            if (this.onAPDUResponse) {
+                var bs = e.data.data,
+                    len = bs.length;
+                this.onAPDUResponse(bs[len - 2] << 8 | bs[len - 1], len > 2 ? new _cryptographixSimCore.ByteArray(bs.subarray(0, len - 2)) : null);
+            }
+        } else {
+            console.log("cmd: " + e.data.command + " data: " + e.data.data);
+        }
+    };
+
+    JSSimulatedSlot.prototype.init = function init() {
+        this.cardWorker = new Worker("js/SmartCardSlotSimulator/SmartCardSlotWorker.js");
+        this.cardWorker.onmessage = this.OnMessage.bind(this);
+        this.cardWorker.onerror = function (e) {};
+    };
+
+    JSSimulatedSlot.prototype.sendToWorker = function sendToWorker(command, data) {
+        this.cardWorker.postMessage({
+            "command": command,
+            "data": data
+        });
+    };
+
+    JSSimulatedSlot.prototype.executeAPDUCommand = function executeAPDUCommand(bCLA, bINS, bP1, bP2, commandData, wLe, onAPDUResponse) {
+        var cmd = [bCLA, bINS, bP1, bP2];
+        var len = 4;
+        var bsCommandData = commandData instanceof _cryptographixSimCore.ByteArray ? commandData : new _cryptographixSimCore.ByteArray(commandData, _cryptographixSimCore.ByteArray.HEX);
+        if (bsCommandData.length > 0) {
+            cmd[len++] = bsCommandData.length;
+            for (var i = 0; i < bsCommandData.length; ++i) cmd[len++] = bsCommandData.byteAt(i);
+        } else if (wLe != undefined) cmd[len++] = wLe & 0xFF;
+        this.sendToWorker("executeAPDU", cmd);
+        this.onAPDUResponse = onAPDUResponse;
+        return;
+    };
+
+    return JSSimulatedSlot;
+})();
+
+var JSIMScriptApplet = (function () {
+    function JSIMScriptApplet() {
+        _classCallCheck(this, JSIMScriptApplet);
+    }
+
+    JSIMScriptApplet.prototype.selectApplication = function selectApplication(commandAPDU) {
+        return Promise.resolve(new ResponseAPDU({ sw: 0x9000 }));
+    };
+
+    JSIMScriptApplet.prototype.deselectApplication = function deselectApplication() {};
+
+    JSIMScriptApplet.prototype.executeAPDU = function executeAPDU(commandAPDU) {
+        return Promise.resolve(new ResponseAPDU({ sw: 0x6D00 }));
+    };
+
+    return JSIMScriptApplet;
+})();
+
+exports.JSIMScriptApplet = JSIMScriptApplet;
+
+var JSIMScriptCard = (function () {
+    function JSIMScriptCard() {
+        _classCallCheck(this, JSIMScriptCard);
+
+        this.applets = [];
+        this._atr = new _cryptographixSimCore.ByteArray([]);
+    }
+
+    JSIMScriptCard.prototype.loadApplication = function loadApplication(aid, applet) {
+        this.applets.push({ aid: aid, applet: applet });
+    };
+
+    JSIMScriptCard.prototype.powerOn = function powerOn() {
+        this._powerIsOn = true;
+        return Promise.resolve(this._atr);
+    };
+
+    JSIMScriptCard.prototype.powerOff = function powerOff() {
+        this._powerIsOn = false;
+        this.selectedApplet = undefined;
+        return Promise.resolve();
+    };
+
+    JSIMScriptCard.prototype.reset = function reset() {
+        this._powerIsOn = true;
+        this.selectedApplet = undefined;
+        return Promise.resolve(this._atr);
+    };
+
+    JSIMScriptCard.prototype.exchangeAPDU = function exchangeAPDU(commandAPDU) {
+        if (commandAPDU.INS == 0xA4) {
+            if (this.selectedApplet) {
+                this.selectedApplet.deselectApplication();
+                this.selectedApplet = undefined;
+            }
+            this.selectedApplet = this.applets[0].applet;
+            return this.selectedApplet.selectApplication(commandAPDU);
+        }
+        return this.selectedApplet.executeAPDU(commandAPDU);
+    };
+
+    _createClass(JSIMScriptCard, [{
+        key: 'isPowered',
+        get: function get() {
+            return this._powerIsOn;
+        }
+    }]);
+
+    return JSIMScriptCard;
+})();
+
+exports.JSIMScriptCard = JSIMScriptCard;
+
+var JSIMSlot = (function () {
+    function JSIMSlot(card) {
+        _classCallCheck(this, JSIMSlot);
+
+        this.card = card;
+    }
+
+    JSIMSlot.prototype.powerOn = function powerOn() {
+        if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
+        return this.card.powerOn();
+    };
+
+    JSIMSlot.prototype.powerOff = function powerOff() {
+        if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
+        return this.card.powerOff();
+    };
+
+    JSIMSlot.prototype.reset = function reset() {
+        if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
+        return this.card.reset();
+    };
+
+    JSIMSlot.prototype.executeAPDU = function executeAPDU(commandAPDU) {
+        if (!this.isPresent) return Promise.reject(new Error("JSIM: Card not present"));
+        if (!this.isPowered) return Promise.reject(new Error("JSIM: Card unpowered"));
+        return this.card.exchangeAPDU(commandAPDU);
+    };
+
+    JSIMSlot.prototype.insertCard = function insertCard(card) {
+        if (this.card) this.ejectCard();
+        this.card = card;
+    };
+
+    JSIMSlot.prototype.ejectCard = function ejectCard() {
+        if (this.card) {
+            if (this.card.isPowered) this.card.powerOff();
+            this.card = undefined;
+        }
+    };
+
+    _createClass(JSIMSlot, [{
+        key: 'isPresent',
+        get: function get() {
+            return !!this.card;
+        }
+    }, {
+        key: 'isPowered',
+        get: function get() {
+            return this.isPresent && this.card.isPowered;
+        }
+    }]);
+
+    return JSIMSlot;
+})();
+
+exports.JSIMSlot = JSIMSlot;

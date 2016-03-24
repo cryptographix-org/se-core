@@ -38,7 +38,7 @@ export class SlotProtocolHandler
     switch( hdr.method )
     {
       case "executeAPDU":
-        if ( !( hdr.kind instanceof CommandAPDU ) )
+        if ( !( payload instanceof CommandAPDU ) )
           break;
 
         response = this.slot.executeAPDU( <CommandAPDU>payload );
@@ -50,20 +50,26 @@ export class SlotProtocolHandler
         });
         break;
 
-
       case "powerOff":
-      case "powerOn":
-      case "reset":
-        if ( hdr.method == 'reset' )
-          response = this.slot.reset();
-        else if ( hdr.method == 'powerOn' )
-          response = this.slot.powerOn();
-        else // if ( hdr.method == 'powerOff' )
-          response = this.slot.powerOff();
+        response = this.slot.powerOff()
+          .then( ( respData: boolean )=> {
+            receivingEndPoint.sendMessage( new Message<ByteArray>( { method: hdr.method }, new ByteArray() ) );
+          });
+        break;
 
-        response.then( ( respData: ByteArray )=> {
-          receivingEndPoint.sendMessage( new Message<ByteArray>( { method: hdr.method }, respData ) );
-        });
+      case "powerOn":
+        response = this.slot.powerOn()
+          .then( ( respData: ByteArray )=> {
+            receivingEndPoint.sendMessage( new Message<ByteArray>( { method: hdr.method }, respData ) );
+          });
+        break;
+
+      case "reset":
+        response = this.slot.reset()
+          .then( ( respData: ByteArray )=> {
+            receivingEndPoint.sendMessage( new Message<ByteArray>( { method: hdr.method }, respData ) );
+          });
+        break;
 
       default:
         response = Promise.reject<Error>( new Error( "Invalid method" + hdr.method ) );
