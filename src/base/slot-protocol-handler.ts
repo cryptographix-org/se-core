@@ -9,7 +9,7 @@ export class SlotProtocolHandler
   endPoint: EndPoint;
   slot: Slot;
 
-  constructor(  )
+  constructor()
   {
   }
 
@@ -23,9 +23,9 @@ export class SlotProtocolHandler
 
   unlinkSlot()
   {
-    this.endPoint.onMessage( undefined );
-    this.endPoint = undefined;
-    this.slot = undefined;
+    this.endPoint.onMessage( null );
+    this.endPoint = null;
+    this.slot = null;
   }
 
   onMessage( packet: Message<any>, receivingEndPoint: EndPoint )
@@ -33,51 +33,48 @@ export class SlotProtocolHandler
     let hdr: any = packet.header;
     let payload = packet.payload;
 
-    switch( hdr.command )
+    let response: Promise<any>;
+
+    switch( hdr.method )
     {
       case "executeAPDU":
-      {
         if ( !( hdr.kind instanceof CommandAPDU ) )
           break;
 
-        let commandAPDU: CommandAPDU = <CommandAPDU>payload;
+        response = this.slot.executeAPDU( <CommandAPDU>payload );
 
-        var resp = this.slot.executeAPDU( commandAPDU );
-        let x: MessageHeader = null;
-
-        resp.then( ( responseAPDU ) => {
+        response.then( ( responseAPDU: ResponseAPDU ) => {
           let replyPacket = new Message<ResponseAPDU>( { method: "executeAPDU" }, responseAPDU );
 
           receivingEndPoint.sendMessage( replyPacket );
-        })
-        .catch( () => {
-          let errorPacket = new Message<Error>( { method: "error" }, undefined );
+        });
+        break;
 
-          receivingEndPoint.sendMessage( errorPacket );
+
+      case "powerOff":
+      case "powerOn":
+      case "reset":
+        if ( hdr.method == 'reset' )
+          response = this.slot.reset();
+        else if ( hdr.method == 'powerOn' )
+          response = this.slot.powerOn();
+        else // if ( hdr.method == 'powerOff' )
+          response = this.slot.powerOff();
+
+        response.then( ( respData: ByteArray )=> {
+          receivingEndPoint.sendMessage( new Message<ByteArray>( { method: hdr.method }, respData ) );
         });
 
+      default:
+        response = Promise.reject<Error>( new Error( "Invalid method" + hdr.method ) );
         break;
-      }
+    } // switch
 
-/*          case "ctrlPowerReset":
-          {
-            var atr = null;
+    // trap and return any errors
+    response.catch( ( e: any ) => {
+      let errorPacket = new Message<Error>( { method: "error" }, e );
 
-            if ( cmd.data == "powerOff" )
-              atr = slot.ctrlPowerReset( 0 );
-            else if ( cmd.data == "powerOn" )
-              atr = slot.ctrlPowerReset( 1 );
-            else if ( cmd.data == "reset" )
-              atr = slot.ctrlPowerReset( 2 );
-
-            return sendResponsePacket(
-              port,
-              packet.header,
-              {
-                command: "ctrlPowerReset",
-                data: new Uint8Array( atr )
-              } );
-          }*/
-        } // switch
+      receivingEndPoint.sendMessage( errorPacket );
+    });
   }
 }

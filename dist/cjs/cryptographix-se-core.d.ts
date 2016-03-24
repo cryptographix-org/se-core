@@ -1,11 +1,6 @@
 declare module 'cryptographix-se-core'
 {
-  import { ByteArray, Kind, EndPoint, Message, KindInfo } from 'cryptographix-sim-core';
-
-
-
-
-
+  import { ByteArray, Kind, EndPoint, Message, ByteEncoding, KindInfo } from 'cryptographix-sim-core';
 
   export class BaseTLV {
       static Encodings: {
@@ -153,6 +148,11 @@ declare module 'cryptographix-se-core'
   }
 
 
+
+
+
+
+
   export class Key {
       _type: number;
       _size: number;
@@ -204,8 +204,8 @@ declare module 'cryptographix-se-core'
 
   export class ByteString {
       byteArray: ByteArray;
-      static HEX: number;
-      static BASE64: number;
+      static HEX: ByteEncoding;
+      static BASE64: ByteEncoding;
       constructor(value: string | ByteString | ByteArray, encoding?: number);
       length: number;
       bytes(offset: number, count?: number): ByteString;
@@ -220,8 +220,8 @@ declare module 'cryptographix-se-core'
       pad(method: number, optional?: boolean): ByteString;
       toString(encoding?: number): string;
   }
-  export const HEX: number;
-  export const BASE64: number;
+  export const HEX: ByteEncoding;
+  export const BASE64: ByteEncoding;
 
 
   export class ByteBuffer {

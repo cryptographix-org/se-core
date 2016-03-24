@@ -362,31 +362,39 @@ var SlotProtocolHandler = (function () {
     };
 
     SlotProtocolHandler.prototype.unlinkSlot = function unlinkSlot() {
-        this.endPoint.onMessage(undefined);
-        this.endPoint = undefined;
-        this.slot = undefined;
+        this.endPoint.onMessage(null);
+        this.endPoint = null;
+        this.slot = null;
     };
 
     SlotProtocolHandler.prototype.onMessage = function onMessage(packet, receivingEndPoint) {
         var hdr = packet.header;
         var payload = packet.payload;
-        switch (hdr.command) {
+        var response = undefined;
+        switch (hdr.method) {
             case "executeAPDU":
-                {
-                    if (!(hdr.kind instanceof CommandAPDU)) break;
-                    var commandAPDU = payload;
-                    var resp = this.slot.executeAPDU(commandAPDU);
-                    var x = null;
-                    resp.then(function (responseAPDU) {
-                        var replyPacket = new _cryptographixSimCore.Message({ method: "executeAPDU" }, responseAPDU);
-                        receivingEndPoint.sendMessage(replyPacket);
-                    })['catch'](function () {
-                        var errorPacket = new _cryptographixSimCore.Message({ method: "error" }, undefined);
-                        receivingEndPoint.sendMessage(errorPacket);
-                    });
-                    break;
-                }
+                if (!(hdr.kind instanceof CommandAPDU)) break;
+                response = this.slot.executeAPDU(payload);
+                response.then(function (responseAPDU) {
+                    var replyPacket = new _cryptographixSimCore.Message({ method: "executeAPDU" }, responseAPDU);
+                    receivingEndPoint.sendMessage(replyPacket);
+                });
+                break;
+            case "powerOff":
+            case "powerOn":
+            case "reset":
+                if (hdr.method == 'reset') response = this.slot.reset();else if (hdr.method == 'powerOn') response = this.slot.powerOn();else response = this.slot.powerOff();
+                response.then(function (respData) {
+                    receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, respData));
+                });
+            default:
+                response = Promise.reject(new Error("Invalid method" + hdr.method));
+                break;
         }
+        response['catch'](function (e) {
+            var errorPacket = new _cryptographixSimCore.Message({ method: "error" }, e);
+            receivingEndPoint.sendMessage(errorPacket);
+        });
     };
 
     return SlotProtocolHandler;
@@ -788,8 +796,8 @@ var ByteString = (function () {
 
 exports.ByteString = ByteString;
 
-ByteString.HEX = _cryptographixSimCore.ByteArray.HEX;
-ByteString.BASE64 = _cryptographixSimCore.ByteArray.HEX;
+ByteString.HEX = _cryptographixSimCore.ByteEncoding.HEX;
+ByteString.BASE64 = _cryptographixSimCore.ByteEncoding.BASE64;
 var HEX = ByteString.HEX;
 exports.HEX = HEX;
 var BASE64 = ByteString.BASE64;

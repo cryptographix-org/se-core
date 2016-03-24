@@ -1,4 +1,4 @@
-import { ByteArray } from 'cryptographix-sim-core';
+import { ByteArray, ByteEncoding } from 'cryptographix-sim-core';
 
 import { ByteBuffer } from './byte-buffer';
 import { Crypto } from './crypto';
@@ -7,8 +7,8 @@ export class ByteString
 {
   public byteArray: ByteArray;
 
-  public static HEX = ByteArray.HEX;
-  public static BASE64 = ByteArray.HEX;
+  public static HEX = ByteEncoding.HEX;
+  public static BASE64 = ByteEncoding.BASE64;
 
   constructor( value: string | ByteString | ByteArray, encoding?: number )
   {

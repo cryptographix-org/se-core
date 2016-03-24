@@ -1,7 +1,7 @@
 System.register(['cryptographix-sim-core'], function (_export) {
     'use strict';
 
-    var ByteArray, Kind, KindBuilder, Message, BaseTLV, CommandAPDU, ISO7816, ResponseAPDU, SlotProtocolHandler, Key, Crypto, ByteString, HEX, BASE64, ByteBuffer, TLV, TLVList, JSSimulatedSlot, JSIMScriptApplet, JSIMScriptCard, JSIMSlot, MEMFLAGS, Segment, Accessor, MemoryManager, MELINST, MELTAGADDR, MELTAGCOND, MELTAGSYSTEM, MELTAGSTACK, MELTAGPRIMRET, MELPARAMDEF, MEL, MELDecode, MEL_CCR_Z, MEL_CCR_C, MELVirtualMachine, JSIMMultosApplet, JSIMMultosCard, setZeroPrimitives, setOnePrimitives, setTwoPrimitives, setThreePrimitives, primitiveSets, SecurityManager, ADC, ALC, ALU;
+    var ByteArray, Kind, KindBuilder, Message, ByteEncoding, BaseTLV, CommandAPDU, ISO7816, ResponseAPDU, SlotProtocolHandler, Key, Crypto, ByteString, HEX, BASE64, ByteBuffer, TLV, TLVList, JSSimulatedSlot, JSIMScriptApplet, JSIMScriptCard, JSIMSlot, MEMFLAGS, Segment, Accessor, MemoryManager, MELINST, MELTAGADDR, MELTAGCOND, MELTAGSYSTEM, MELTAGSTACK, MELTAGPRIMRET, MELPARAMDEF, MEL, MELDecode, MEL_CCR_Z, MEL_CCR_C, MELVirtualMachine, JSIMMultosApplet, JSIMMultosCard, setZeroPrimitives, setOnePrimitives, setTwoPrimitives, setThreePrimitives, primitiveSets, SecurityManager, ADC, ALC, ALU;
 
     var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
@@ -232,6 +232,7 @@ System.register(['cryptographix-sim-core'], function (_export) {
             Kind = _cryptographixSimCore.Kind;
             KindBuilder = _cryptographixSimCore.KindBuilder;
             Message = _cryptographixSimCore.Message;
+            ByteEncoding = _cryptographixSimCore.ByteEncoding;
         }],
         execute: function () {
             BaseTLV = (function () {
@@ -581,31 +582,39 @@ System.register(['cryptographix-sim-core'], function (_export) {
                 };
 
                 SlotProtocolHandler.prototype.unlinkSlot = function unlinkSlot() {
-                    this.endPoint.onMessage(undefined);
-                    this.endPoint = undefined;
-                    this.slot = undefined;
+                    this.endPoint.onMessage(null);
+                    this.endPoint = null;
+                    this.slot = null;
                 };
 
                 SlotProtocolHandler.prototype.onMessage = function onMessage(packet, receivingEndPoint) {
                     var hdr = packet.header;
                     var payload = packet.payload;
-                    switch (hdr.command) {
+                    var response = undefined;
+                    switch (hdr.method) {
                         case "executeAPDU":
-                            {
-                                if (!(hdr.kind instanceof CommandAPDU)) break;
-                                var commandAPDU = payload;
-                                var resp = this.slot.executeAPDU(commandAPDU);
-                                var x = null;
-                                resp.then(function (responseAPDU) {
-                                    var replyPacket = new Message({ method: "executeAPDU" }, responseAPDU);
-                                    receivingEndPoint.sendMessage(replyPacket);
-                                })['catch'](function () {
-                                    var errorPacket = new Message({ method: "error" }, undefined);
-                                    receivingEndPoint.sendMessage(errorPacket);
-                                });
-                                break;
-                            }
+                            if (!(hdr.kind instanceof CommandAPDU)) break;
+                            response = this.slot.executeAPDU(payload);
+                            response.then(function (responseAPDU) {
+                                var replyPacket = new Message({ method: "executeAPDU" }, responseAPDU);
+                                receivingEndPoint.sendMessage(replyPacket);
+                            });
+                            break;
+                        case "powerOff":
+                        case "powerOn":
+                        case "reset":
+                            if (hdr.method == 'reset') response = this.slot.reset();else if (hdr.method == 'powerOn') response = this.slot.powerOn();else response = this.slot.powerOff();
+                            response.then(function (respData) {
+                                receivingEndPoint.sendMessage(new Message({ method: hdr.method }, respData));
+                            });
+                        default:
+                            response = Promise.reject(new Error("Invalid method" + hdr.method));
+                            break;
                     }
+                    response['catch'](function (e) {
+                        var errorPacket = new Message({ method: "error" }, e);
+                        receivingEndPoint.sendMessage(errorPacket);
+                    });
                 };
 
                 return SlotProtocolHandler;
@@ -1007,8 +1016,8 @@ System.register(['cryptographix-sim-core'], function (_export) {
 
             _export('ByteString', ByteString);
 
-            ByteString.HEX = ByteArray.HEX;
-            ByteString.BASE64 = ByteArray.HEX;
+            ByteString.HEX = ByteEncoding.HEX;
+            ByteString.BASE64 = ByteEncoding.BASE64;
             HEX = ByteString.HEX;
 
             _export('HEX', HEX);
