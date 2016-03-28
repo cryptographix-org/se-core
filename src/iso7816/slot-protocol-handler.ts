@@ -1,8 +1,8 @@
-import { ByteArray, EndPoint, Message, MessageHeader } from 'cryptographix-sim-core';
+import { ByteArray, EndPoint, Message, MessageHeader, Direction, Channel } from 'cryptographix-sim-core';
 
-import { Slot } from '../base/slot';
-import { CommandAPDU } from '../base/command-apdu';
-import { ResponseAPDU } from '../base/response-apdu';
+import { Slot } from '../iso7816/slot';
+import { CommandAPDU } from '../iso7816/command-apdu';
+import { ResponseAPDU } from '../iso7816/response-apdu';
 
 export class SlotProtocolHandler
 {
@@ -15,10 +15,14 @@ export class SlotProtocolHandler
 
   linkSlot( slot: Slot, endPoint: EndPoint )
   {
+    let me = this;
+
     this.endPoint = endPoint;
     this.slot = slot;
 
-    endPoint.onMessage( this.onMessage );
+    endPoint.onMessage( ( msg, ep ) => {
+      me.onMessage( msg,ep );
+    } );
   }
 
   unlinkSlot()
@@ -34,6 +38,7 @@ export class SlotProtocolHandler
     let payload = packet.payload;
 
     let response: Promise<any>;
+    let replyHeader = { method: hdr.method, isResponse: true };
 
     switch( hdr.method )
     {
@@ -44,7 +49,7 @@ export class SlotProtocolHandler
         response = this.slot.executeAPDU( <CommandAPDU>payload );
 
         response.then( ( responseAPDU: ResponseAPDU ) => {
-          let replyPacket = new Message<ResponseAPDU>( { method: "executeAPDU" }, responseAPDU );
+          let replyPacket = new Message<ResponseAPDU>( replyHeader, responseAPDU );
 
           receivingEndPoint.sendMessage( replyPacket );
         });
@@ -52,22 +57,22 @@ export class SlotProtocolHandler
 
       case "powerOff":
         response = this.slot.powerOff()
-          .then( ( respData: boolean )=> {
-            receivingEndPoint.sendMessage( new Message<ByteArray>( { method: hdr.method }, new ByteArray() ) );
+          .then( ( respData: ByteArray )=> {
+            receivingEndPoint.sendMessage( new Message<ByteArray>( replyHeader, new ByteArray() ) );
           });
         break;
 
       case "powerOn":
         response = this.slot.powerOn()
           .then( ( respData: ByteArray )=> {
-            receivingEndPoint.sendMessage( new Message<ByteArray>( { method: hdr.method }, respData ) );
+            receivingEndPoint.sendMessage( new Message<ByteArray>( replyHeader, respData ) );
           });
         break;
 
       case "reset":
         response = this.slot.reset()
           .then( ( respData: ByteArray )=> {
-            receivingEndPoint.sendMessage( new Message<ByteArray>( { method: hdr.method }, respData ) );
+            receivingEndPoint.sendMessage( new Message<ByteArray>( replyHeader, respData ) );
           });
         break;
 

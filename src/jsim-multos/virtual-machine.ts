@@ -1,8 +1,8 @@
 import * as MEL from './mel-defines';
 import { ByteArray } from 'cryptographix-sim-core';
 
-import { CommandAPDU } from '../base/command-apdu';
-import { ResponseAPDU } from '../base/response-apdu';
+import { CommandAPDU } from '../iso7816/command-apdu';
+import { ResponseAPDU } from '../iso7816/response-apdu';
 
 function hex( val ) { return val.toString( 16 ); }
 function hex2( val ) { return ( "00" + val.toString( 16 ) ).substr( -2 ); }

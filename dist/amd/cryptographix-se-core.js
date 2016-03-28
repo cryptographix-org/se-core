@@ -1,9 +1,9 @@
-define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixSimCore) {
-    'use strict';
+define(["exports", "cryptographix-sim-core"], function (exports, _cryptographixSimCore) {
+    "use strict";
 
     exports.__esModule = true;
 
-    var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+    var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
     exports.hex2 = hex2;
     exports.hex4 = hex4;
@@ -12,402 +12,7 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
     exports.MEL2TAG = MEL2TAG;
     exports.callPrimitive = callPrimitive;
 
-    function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
-
-    var BaseTLV = (function () {
-        function BaseTLV(tag, value, encoding) {
-            _classCallCheck(this, BaseTLV);
-
-            this.encoding = encoding || BaseTLV.Encodings.EMV;
-            switch (this.encoding) {
-                case BaseTLV.Encodings.EMV:
-                    {
-                        var tlvBuffer = new _cryptographixSimCore.ByteArray([]);
-                        if (tag >= 0x100) tlvBuffer.addByte(tag >> 8 & 0xFF);
-                        tlvBuffer.addByte(tag & 0xFF);
-                        var len = value.length;
-                        if (len > 0xFF) {
-                            tlvBuffer.addByte(0x82);
-                            tlvBuffer.addByte(len >> 8 & 0xFF);
-                        } else if (len > 0x7F) tlvBuffer.addByte(0x81);
-                        tlvBuffer.addByte(len & 0xFF);
-                        tlvBuffer.concat(value);
-                        this.byteArray = tlvBuffer;
-                        break;
-                    }
-            }
-        }
-
-        BaseTLV.parseTLV = function parseTLV(buffer, encoding) {
-            var res = { tag: 0, len: 0, value: undefined, lenOffset: 0, valueOffset: 0 };
-            var off = 0;
-            var bytes = buffer.backingArray;
-            switch (encoding) {
-                case BaseTLV.Encodings.EMV:
-                    {
-                        while (off < bytes.length && (bytes[off] == 0x00 || bytes[off] == 0xFF)) ++off;
-                        if (off >= bytes.length) return res;
-                        if ((bytes[off] & 0x1F) == 0x1F) {
-                            res.tag = bytes[off++] << 8;
-                            if (off >= bytes.length) {
-                                return null;
-                            }
-                        }
-                        res.tag |= bytes[off++];
-                        res.lenOffset = off;
-                        if (off >= bytes.length) {
-                            return null;
-                        }
-                        var ll = bytes[off] & 0x80 ? bytes[off++] & 0x7F : 1;
-                        while (ll-- > 0) {
-                            if (off >= bytes.length) {
-                                return null;
-                            }
-                            res.len = res.len << 8 | bytes[off++];
-                        }
-                        res.valueOffset = off;
-                        if (off + res.len > bytes.length) {
-                            return null;
-                        }
-                        res.value = bytes.slice(res.valueOffset, res.valueOffset + res.len);
-                        break;
-                    }
-            }
-            return res;
-        };
-
-        _createClass(BaseTLV, [{
-            key: 'tag',
-            get: function get() {
-                return BaseTLV.parseTLV(this.byteArray, this.encoding).tag;
-            }
-        }, {
-            key: 'value',
-            get: function get() {
-                return BaseTLV.parseTLV(this.byteArray, this.encoding).value;
-            }
-        }, {
-            key: 'len',
-            get: function get() {
-                return BaseTLV.parseTLV(this.byteArray, this.encoding).len;
-            }
-        }]);
-
-        return BaseTLV;
-    })();
-
-    exports.BaseTLV = BaseTLV;
-
-    BaseTLV.Encodings = {
-        EMV: 1,
-        DGI: 2
-    };
-    BaseTLV.Encodings["CTV"] = 4;
-
-    var CommandAPDU = (function () {
-        function CommandAPDU(attributes) {
-            _classCallCheck(this, CommandAPDU);
-
-            this.INS = 0;
-            this.P1 = 0;
-            this.P2 = 0;
-            this.data = new _cryptographixSimCore.ByteArray();
-            this.Le = 0;
-            _cryptographixSimCore.Kind.initFields(this, attributes);
-        }
-
-        CommandAPDU.init = function init(CLA, INS, P1, P2, data, expectedLen) {
-            return new CommandAPDU().set(CLA, INS, P1, P2, data, expectedLen);
-        };
-
-        CommandAPDU.prototype.set = function set(CLA, INS, P1, P2, data, expectedLen) {
-            this.CLA = CLA;
-            this.INS = INS;
-            this.P1 = P1;
-            this.P2 = P2;
-            this.data = data || new _cryptographixSimCore.ByteArray();
-            this.Le = expectedLen || 0;
-            return this;
-        };
-
-        CommandAPDU.prototype.setCLA = function setCLA(CLA) {
-            this.CLA = CLA;return this;
-        };
-
-        CommandAPDU.prototype.setINS = function setINS(INS) {
-            this.INS = INS;return this;
-        };
-
-        CommandAPDU.prototype.setP1 = function setP1(P1) {
-            this.P1 = P1;return this;
-        };
-
-        CommandAPDU.prototype.setP2 = function setP2(P2) {
-            this.P2 = P2;return this;
-        };
-
-        CommandAPDU.prototype.setData = function setData(data) {
-            this.data = data;return this;
-        };
-
-        CommandAPDU.prototype.setLe = function setLe(Le) {
-            this.Le = Le;return this;
-        };
-
-        CommandAPDU.prototype.toJSON = function toJSON() {
-            return {
-                CLA: this.CLA,
-                INS: this.INS,
-                P1: this.P1,
-                P2: this.P2,
-                data: this.data,
-                Le: this.Le
-            };
-        };
-
-        CommandAPDU.prototype.encodeBytes = function encodeBytes(options) {
-            var dlen = this.Lc > 0 ? 1 + this.Lc : 0;
-            var len = 4 + dlen + (this.Le > 0 ? 1 : 0);
-            var ba = new _cryptographixSimCore.ByteArray().setLength(len);
-            ba.setBytesAt(0, this.header);
-            if (this.Lc) {
-                ba.setByteAt(4, this.Lc);
-                ba.setBytesAt(5, this.data);
-            }
-            if (this.Le > 0) {
-                ba.setByteAt(4 + dlen, this.Le);
-            }
-            return ba;
-        };
-
-        CommandAPDU.prototype.decodeBytes = function decodeBytes(byteArray, options) {
-            if (byteArray.length < 4) throw new Error('CommandAPDU: Invalid buffer');
-            var offset = 0;
-            this.CLA = byteArray.byteAt(offset++);
-            this.INS = byteArray.byteAt(offset++);
-            this.P1 = byteArray.byteAt(offset++);
-            this.P2 = byteArray.byteAt(offset++);
-            if (byteArray.length > offset + 1) {
-                var Lc = byteArray.byteAt(offset++);
-                this.data = byteArray.bytesAt(offset, Lc);
-                offset += Lc;
-            }
-            if (byteArray.length > offset) this.Le = byteArray.byteAt(offset++);
-            if (byteArray.length != offset) throw new Error('CommandAPDU: Invalid buffer');
-            return this;
-        };
-
-        _createClass(CommandAPDU, [{
-            key: 'Lc',
-            get: function get() {
-                return this.data.length;
-            }
-        }, {
-            key: 'header',
-            get: function get() {
-                return new _cryptographixSimCore.ByteArray([this.CLA, this.INS, this.P1, this.P2]);
-            }
-        }]);
-
-        return CommandAPDU;
-    })();
-
-    exports.CommandAPDU = CommandAPDU;
-
-    _cryptographixSimCore.KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').integerField('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', _cryptographixSimCore.ByteArray).integerField('Le', 'Expected Length');
-
-    var ISO7816;
-    exports.ISO7816 = ISO7816;
-    (function (ISO7816) {
-        ISO7816[ISO7816["CLA_ISO"] = 0] = "CLA_ISO";
-        ISO7816[ISO7816["INS_EXTERNAL_AUTHENTICATE"] = 130] = "INS_EXTERNAL_AUTHENTICATE";
-        ISO7816[ISO7816["INS_GET_CHALLENGE"] = 132] = "INS_GET_CHALLENGE";
-        ISO7816[ISO7816["INS_INTERNAL_AUTHENTICATE"] = 136] = "INS_INTERNAL_AUTHENTICATE";
-        ISO7816[ISO7816["INS_SELECT_FILE"] = 164] = "INS_SELECT_FILE";
-        ISO7816[ISO7816["INS_READ_RECORD"] = 178] = "INS_READ_RECORD";
-        ISO7816[ISO7816["INS_UPDATE_RECORD"] = 220] = "INS_UPDATE_RECORD";
-        ISO7816[ISO7816["INS_VERIFY"] = 32] = "INS_VERIFY";
-        ISO7816[ISO7816["INS_BLOCK_APPLICATION"] = 30] = "INS_BLOCK_APPLICATION";
-        ISO7816[ISO7816["INS_UNBLOCK_APPLICATION"] = 24] = "INS_UNBLOCK_APPLICATION";
-        ISO7816[ISO7816["INS_UNBLOCK_CHANGE_PIN"] = 36] = "INS_UNBLOCK_CHANGE_PIN";
-        ISO7816[ISO7816["INS_GET_DATA"] = 202] = "INS_GET_DATA";
-        ISO7816[ISO7816["TAG_APPLICATION_TEMPLATE"] = 97] = "TAG_APPLICATION_TEMPLATE";
-        ISO7816[ISO7816["TAG_FCI_PROPRIETARY_TEMPLATE"] = 165] = "TAG_FCI_PROPRIETARY_TEMPLATE";
-        ISO7816[ISO7816["TAG_FCI_TEMPLATE"] = 111] = "TAG_FCI_TEMPLATE";
-        ISO7816[ISO7816["TAG_AID"] = 79] = "TAG_AID";
-        ISO7816[ISO7816["TAG_APPLICATION_LABEL"] = 80] = "TAG_APPLICATION_LABEL";
-        ISO7816[ISO7816["TAG_LANGUAGE_PREFERENCES"] = 24365] = "TAG_LANGUAGE_PREFERENCES";
-        ISO7816[ISO7816["TAG_APPLICATION_EFFECTIVE_DATE"] = 24357] = "TAG_APPLICATION_EFFECTIVE_DATE";
-        ISO7816[ISO7816["TAG_APPLICATION_EXPIRY_DATE"] = 24356] = "TAG_APPLICATION_EXPIRY_DATE";
-        ISO7816[ISO7816["TAG_CARDHOLDER_NAME"] = 24352] = "TAG_CARDHOLDER_NAME";
-        ISO7816[ISO7816["TAG_ISSUER_COUNTRY_CODE"] = 24360] = "TAG_ISSUER_COUNTRY_CODE";
-        ISO7816[ISO7816["TAG_ISSUER_URL"] = 24400] = "TAG_ISSUER_URL";
-        ISO7816[ISO7816["TAG_PAN"] = 90] = "TAG_PAN";
-        ISO7816[ISO7816["TAG_PAN_SEQUENCE_NUMBER"] = 24372] = "TAG_PAN_SEQUENCE_NUMBER";
-        ISO7816[ISO7816["TAG_SERVICE_CODE"] = 24368] = "TAG_SERVICE_CODE";
-        ISO7816[ISO7816["ISO_PINBLOCK_SIZE"] = 8] = "ISO_PINBLOCK_SIZE";
-        ISO7816[ISO7816["APDU_LEN_LE_MAX"] = 256] = "APDU_LEN_LE_MAX";
-        ISO7816[ISO7816["SW_SUCCESS"] = 36864] = "SW_SUCCESS";
-        ISO7816[ISO7816["SW_WARNING_NV_MEMORY_UNCHANGED"] = 25088] = "SW_WARNING_NV_MEMORY_UNCHANGED";
-        ISO7816[ISO7816["SW_PART_OF_RETURN_DATA_CORRUPTED"] = 25217] = "SW_PART_OF_RETURN_DATA_CORRUPTED";
-        ISO7816[ISO7816["SW_END_FILE_REACHED_BEFORE_LE_BYTE"] = 25218] = "SW_END_FILE_REACHED_BEFORE_LE_BYTE";
-        ISO7816[ISO7816["SW_SELECTED_FILE_INVALID"] = 25219] = "SW_SELECTED_FILE_INVALID";
-        ISO7816[ISO7816["SW_FCI_NOT_FORMATTED_TO_ISO"] = 25220] = "SW_FCI_NOT_FORMATTED_TO_ISO";
-        ISO7816[ISO7816["SW_WARNING_NV_MEMORY_CHANGED"] = 25344] = "SW_WARNING_NV_MEMORY_CHANGED";
-        ISO7816[ISO7816["SW_FILE_FILLED_BY_LAST_WRITE"] = 25473] = "SW_FILE_FILLED_BY_LAST_WRITE";
-        ISO7816[ISO7816["SW_WRONG_LENGTH"] = 26368] = "SW_WRONG_LENGTH";
-        ISO7816[ISO7816["SW_FUNCTIONS_IN_CLA_NOT_SUPPORTED"] = 26624] = "SW_FUNCTIONS_IN_CLA_NOT_SUPPORTED";
-        ISO7816[ISO7816["SW_LOGICAL_CHANNEL_NOT_SUPPORTED"] = 26753] = "SW_LOGICAL_CHANNEL_NOT_SUPPORTED";
-        ISO7816[ISO7816["SW_SECURE_MESSAGING_NOT_SUPPORTED"] = 26754] = "SW_SECURE_MESSAGING_NOT_SUPPORTED";
-        ISO7816[ISO7816["SW_COMMAND_NOT_ALLOWED"] = 26880] = "SW_COMMAND_NOT_ALLOWED";
-        ISO7816[ISO7816["SW_COMMAND_INCOMPATIBLE_WITH_FILE_STRUCTURE"] = 27009] = "SW_COMMAND_INCOMPATIBLE_WITH_FILE_STRUCTURE";
-        ISO7816[ISO7816["SW_SECURITY_STATUS_NOT_SATISFIED"] = 27010] = "SW_SECURITY_STATUS_NOT_SATISFIED";
-        ISO7816[ISO7816["SW_FILE_INVALID"] = 27011] = "SW_FILE_INVALID";
-        ISO7816[ISO7816["SW_DATA_INVALID"] = 27012] = "SW_DATA_INVALID";
-        ISO7816[ISO7816["SW_CONDITIONS_NOT_SATISFIED"] = 27013] = "SW_CONDITIONS_NOT_SATISFIED";
-        ISO7816[ISO7816["SW_COMMAND_NOT_ALLOWED_AGAIN"] = 27014] = "SW_COMMAND_NOT_ALLOWED_AGAIN";
-        ISO7816[ISO7816["SW_EXPECTED_SM_DATA_OBJECTS_MISSING"] = 27015] = "SW_EXPECTED_SM_DATA_OBJECTS_MISSING";
-        ISO7816[ISO7816["SW_SM_DATA_OBJECTS_INCORRECT"] = 27016] = "SW_SM_DATA_OBJECTS_INCORRECT";
-        ISO7816[ISO7816["SW_WRONG_PARAMS"] = 27136] = "SW_WRONG_PARAMS";
-        ISO7816[ISO7816["SW_WRONG_DATA"] = 27264] = "SW_WRONG_DATA";
-        ISO7816[ISO7816["SW_FUNC_NOT_SUPPORTED"] = 27265] = "SW_FUNC_NOT_SUPPORTED";
-        ISO7816[ISO7816["SW_FILE_NOT_FOUND"] = 27266] = "SW_FILE_NOT_FOUND";
-        ISO7816[ISO7816["SW_RECORD_NOT_FOUND"] = 27267] = "SW_RECORD_NOT_FOUND";
-        ISO7816[ISO7816["SW_NOT_ENOUGH_SPACE_IN_FILE"] = 27268] = "SW_NOT_ENOUGH_SPACE_IN_FILE";
-        ISO7816[ISO7816["SW_LC_INCONSISTENT_WITH_TLV"] = 27269] = "SW_LC_INCONSISTENT_WITH_TLV";
-        ISO7816[ISO7816["SW_INCORRECT_P1P2"] = 27270] = "SW_INCORRECT_P1P2";
-        ISO7816[ISO7816["SW_LC_INCONSISTENT_WITH_P1P2"] = 27271] = "SW_LC_INCONSISTENT_WITH_P1P2";
-        ISO7816[ISO7816["SW_REFERENCED_DATA_NOT_FOUND"] = 27272] = "SW_REFERENCED_DATA_NOT_FOUND";
-        ISO7816[ISO7816["SW_WRONG_P1P2"] = 27392] = "SW_WRONG_P1P2";
-        ISO7816[ISO7816["SW_INS_NOT_SUPPORTED"] = 27904] = "SW_INS_NOT_SUPPORTED";
-        ISO7816[ISO7816["SW_CLA_NOT_SUPPORTED"] = 28160] = "SW_CLA_NOT_SUPPORTED";
-        ISO7816[ISO7816["SW_UNKNOWN"] = 28416] = "SW_UNKNOWN";
-    })(ISO7816 || (exports.ISO7816 = ISO7816 = {}));
-
-    var ResponseAPDU = (function () {
-        function ResponseAPDU(attributes) {
-            _classCallCheck(this, ResponseAPDU);
-
-            this.SW = ISO7816.SW_SUCCESS;
-            this.data = new _cryptographixSimCore.ByteArray();
-            _cryptographixSimCore.Kind.initFields(this, attributes);
-        }
-
-        ResponseAPDU.init = function init(sw, data) {
-            return new ResponseAPDU().set(sw, data);
-        };
-
-        ResponseAPDU.prototype.set = function set(sw, data) {
-            this.SW = sw;
-            this.data = data || new _cryptographixSimCore.ByteArray();
-            return this;
-        };
-
-        ResponseAPDU.prototype.setSW = function setSW(SW) {
-            this.SW = SW;return this;
-        };
-
-        ResponseAPDU.prototype.setSW1 = function setSW1(SW1) {
-            this.SW = this.SW & 0xFF | SW1 << 8;return this;
-        };
-
-        ResponseAPDU.prototype.setSW2 = function setSW2(SW2) {
-            this.SW = this.SW & 0xFF00 | SW2;return this;
-        };
-
-        ResponseAPDU.prototype.setData = function setData(data) {
-            this.data = data;return this;
-        };
-
-        ResponseAPDU.prototype.encodeBytes = function encodeBytes(options) {
-            var ba = new _cryptographixSimCore.ByteArray().setLength(this.La + 2);
-            ba.setBytesAt(0, this.data);
-            ba.setByteAt(this.La, this.SW >> 8 & 0xff);
-            ba.setByteAt(this.La + 1, this.SW >> 0 & 0xff);
-            return ba;
-        };
-
-        ResponseAPDU.prototype.decodeBytes = function decodeBytes(byteArray, options) {
-            if (byteArray.length < 2) throw new Error('ResponseAPDU Buffer invalid');
-            var la = byteArray.length - 2;
-            this.SW = byteArray.wordAt(la);
-            this.data = la ? byteArray.bytesAt(0, la) : new _cryptographixSimCore.ByteArray();
-            return this;
-        };
-
-        _createClass(ResponseAPDU, [{
-            key: 'La',
-            get: function get() {
-                return this.data.length;
-            }
-        }]);
-
-        return ResponseAPDU;
-    })();
-
-    exports.ResponseAPDU = ResponseAPDU;
-
-    _cryptographixSimCore.KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').integerField('SW', 'Status Word', { maximum: 0xFFFF }).integerField('La', 'Actual Length', { calculated: true }).field('Data', 'Response Data', _cryptographixSimCore.ByteArray);
-
-    var SlotProtocolHandler = (function () {
-        function SlotProtocolHandler() {
-            _classCallCheck(this, SlotProtocolHandler);
-        }
-
-        SlotProtocolHandler.prototype.linkSlot = function linkSlot(slot, endPoint) {
-            this.endPoint = endPoint;
-            this.slot = slot;
-            endPoint.onMessage(this.onMessage);
-        };
-
-        SlotProtocolHandler.prototype.unlinkSlot = function unlinkSlot() {
-            this.endPoint.onMessage(null);
-            this.endPoint = null;
-            this.slot = null;
-        };
-
-        SlotProtocolHandler.prototype.onMessage = function onMessage(packet, receivingEndPoint) {
-            var hdr = packet.header;
-            var payload = packet.payload;
-            var response = undefined;
-            switch (hdr.method) {
-                case "executeAPDU":
-                    if (!(payload instanceof CommandAPDU)) break;
-                    response = this.slot.executeAPDU(payload);
-                    response.then(function (responseAPDU) {
-                        var replyPacket = new _cryptographixSimCore.Message({ method: "executeAPDU" }, responseAPDU);
-                        receivingEndPoint.sendMessage(replyPacket);
-                    });
-                    break;
-                case "powerOff":
-                    response = this.slot.powerOff().then(function (respData) {
-                        receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, new _cryptographixSimCore.ByteArray()));
-                    });
-                    break;
-                case "powerOn":
-                    response = this.slot.powerOn().then(function (respData) {
-                        receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, respData));
-                    });
-                    break;
-                case "reset":
-                    response = this.slot.reset().then(function (respData) {
-                        receivingEndPoint.sendMessage(new _cryptographixSimCore.Message({ method: hdr.method }, respData));
-                    });
-                    break;
-                default:
-                    response = Promise.reject(new Error("Invalid method" + hdr.method));
-                    break;
-            }
-            response['catch'](function (e) {
-                var errorPacket = new _cryptographixSimCore.Message({ method: "error" }, e);
-                receivingEndPoint.sendMessage(errorPacket);
-            });
-        };
-
-        return SlotProtocolHandler;
-    })();
-
-    exports.SlotProtocolHandler = SlotProtocolHandler;
+    function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
     var Key = (function () {
         function Key() {
@@ -792,7 +397,7 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
         };
 
         _createClass(ByteString, [{
-            key: 'length',
+            key: "length",
             get: function get() {
                 return this.byteArray.length;
             }
@@ -844,7 +449,7 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
         };
 
         _createClass(ByteBuffer, [{
-            key: 'length',
+            key: "length",
             get: function get() {
                 return this.byteArray.length;
             }
@@ -854,6 +459,96 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
     })();
 
     exports.ByteBuffer = ByteBuffer;
+
+    var BaseTLV = (function () {
+        function BaseTLV(tag, value, encoding) {
+            _classCallCheck(this, BaseTLV);
+
+            this.encoding = encoding || BaseTLV.Encodings.EMV;
+            switch (this.encoding) {
+                case BaseTLV.Encodings.EMV:
+                    {
+                        var tlvBuffer = new _cryptographixSimCore.ByteArray([]);
+                        if (tag >= 0x100) tlvBuffer.addByte(tag >> 8 & 0xFF);
+                        tlvBuffer.addByte(tag & 0xFF);
+                        var len = value.length;
+                        if (len > 0xFF) {
+                            tlvBuffer.addByte(0x82);
+                            tlvBuffer.addByte(len >> 8 & 0xFF);
+                        } else if (len > 0x7F) tlvBuffer.addByte(0x81);
+                        tlvBuffer.addByte(len & 0xFF);
+                        tlvBuffer.concat(value);
+                        this.byteArray = tlvBuffer;
+                        break;
+                    }
+            }
+        }
+
+        BaseTLV.parseTLV = function parseTLV(buffer, encoding) {
+            var res = { tag: 0, len: 0, value: undefined, lenOffset: 0, valueOffset: 0 };
+            var off = 0;
+            var bytes = buffer.backingArray;
+            switch (encoding) {
+                case BaseTLV.Encodings.EMV:
+                    {
+                        while (off < bytes.length && (bytes[off] == 0x00 || bytes[off] == 0xFF)) ++off;
+                        if (off >= bytes.length) return res;
+                        if ((bytes[off] & 0x1F) == 0x1F) {
+                            res.tag = bytes[off++] << 8;
+                            if (off >= bytes.length) {
+                                return null;
+                            }
+                        }
+                        res.tag |= bytes[off++];
+                        res.lenOffset = off;
+                        if (off >= bytes.length) {
+                            return null;
+                        }
+                        var ll = bytes[off] & 0x80 ? bytes[off++] & 0x7F : 1;
+                        while (ll-- > 0) {
+                            if (off >= bytes.length) {
+                                return null;
+                            }
+                            res.len = res.len << 8 | bytes[off++];
+                        }
+                        res.valueOffset = off;
+                        if (off + res.len > bytes.length) {
+                            return null;
+                        }
+                        res.value = bytes.slice(res.valueOffset, res.valueOffset + res.len);
+                        break;
+                    }
+            }
+            return res;
+        };
+
+        _createClass(BaseTLV, [{
+            key: "tag",
+            get: function get() {
+                return BaseTLV.parseTLV(this.byteArray, this.encoding).tag;
+            }
+        }, {
+            key: "value",
+            get: function get() {
+                return BaseTLV.parseTLV(this.byteArray, this.encoding).value;
+            }
+        }, {
+            key: "len",
+            get: function get() {
+                return BaseTLV.parseTLV(this.byteArray, this.encoding).len;
+            }
+        }]);
+
+        return BaseTLV;
+    })();
+
+    exports.BaseTLV = BaseTLV;
+
+    BaseTLV.Encodings = {
+        EMV: 1,
+        DGI: 2
+    };
+    BaseTLV.Encodings["CTV"] = 4;
 
     var TLV = (function () {
         function TLV(tag, value, encoding) {
@@ -930,6 +625,315 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
     })();
 
     exports.TLVList = TLVList;
+
+    var CommandAPDU = (function () {
+        function CommandAPDU(attributes) {
+            _classCallCheck(this, CommandAPDU);
+
+            this.INS = 0;
+            this.P1 = 0;
+            this.P2 = 0;
+            this.data = new _cryptographixSimCore.ByteArray();
+            this.Le = 0;
+            _cryptographixSimCore.Kind.initFields(this, attributes);
+        }
+
+        CommandAPDU.init = function init(CLA, INS, P1, P2, data, expectedLen) {
+            return new CommandAPDU().set(CLA, INS, P1, P2, data, expectedLen);
+        };
+
+        CommandAPDU.prototype.set = function set(CLA, INS, P1, P2, data, expectedLen) {
+            this.CLA = CLA;
+            this.INS = INS;
+            this.P1 = P1;
+            this.P2 = P2;
+            this.data = data || new _cryptographixSimCore.ByteArray();
+            this.Le = expectedLen || 0;
+            return this;
+        };
+
+        CommandAPDU.prototype.setCLA = function setCLA(CLA) {
+            this.CLA = CLA;return this;
+        };
+
+        CommandAPDU.prototype.setINS = function setINS(INS) {
+            this.INS = INS;return this;
+        };
+
+        CommandAPDU.prototype.setP1 = function setP1(P1) {
+            this.P1 = P1;return this;
+        };
+
+        CommandAPDU.prototype.setP2 = function setP2(P2) {
+            this.P2 = P2;return this;
+        };
+
+        CommandAPDU.prototype.setData = function setData(data) {
+            this.data = data;return this;
+        };
+
+        CommandAPDU.prototype.setLe = function setLe(Le) {
+            this.Le = Le;return this;
+        };
+
+        CommandAPDU.prototype.toJSON = function toJSON() {
+            return {
+                CLA: this.CLA,
+                INS: this.INS,
+                P1: this.P1,
+                P2: this.P2,
+                data: this.data,
+                Le: this.Le
+            };
+        };
+
+        CommandAPDU.prototype.encodeBytes = function encodeBytes(options) {
+            var dlen = this.Lc > 0 ? 1 + this.Lc : 0;
+            var len = 4 + dlen + (this.Le > 0 ? 1 : 0);
+            var ba = new _cryptographixSimCore.ByteArray().setLength(len);
+            ba.setBytesAt(0, this.header);
+            if (this.Lc) {
+                ba.setByteAt(4, this.Lc);
+                ba.setBytesAt(5, this.data);
+            }
+            if (this.Le > 0) {
+                ba.setByteAt(4 + dlen, this.Le);
+            }
+            return ba;
+        };
+
+        CommandAPDU.prototype.decodeBytes = function decodeBytes(byteArray, options) {
+            if (byteArray.length < 4) throw new Error('CommandAPDU: Invalid buffer');
+            var offset = 0;
+            this.CLA = byteArray.byteAt(offset++);
+            this.INS = byteArray.byteAt(offset++);
+            this.P1 = byteArray.byteAt(offset++);
+            this.P2 = byteArray.byteAt(offset++);
+            if (byteArray.length > offset + 1) {
+                var Lc = byteArray.byteAt(offset++);
+                this.data = byteArray.bytesAt(offset, Lc);
+                offset += Lc;
+            }
+            if (byteArray.length > offset) this.Le = byteArray.byteAt(offset++);
+            if (byteArray.length != offset) throw new Error('CommandAPDU: Invalid buffer');
+            return this;
+        };
+
+        _createClass(CommandAPDU, [{
+            key: "Lc",
+            get: function get() {
+                return this.data.length;
+            }
+        }, {
+            key: "header",
+            get: function get() {
+                return new _cryptographixSimCore.ByteArray([this.CLA, this.INS, this.P1, this.P2]);
+            }
+        }]);
+
+        return CommandAPDU;
+    })();
+
+    exports.CommandAPDU = CommandAPDU;
+
+    _cryptographixSimCore.KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').integerField('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', _cryptographixSimCore.ByteArray).integerField('Le', 'Expected Length');
+
+    var ISO7816;
+    exports.ISO7816 = ISO7816;
+    (function (ISO7816) {
+        ISO7816[ISO7816["CLA_ISO"] = 0] = "CLA_ISO";
+        ISO7816[ISO7816["INS_EXTERNAL_AUTHENTICATE"] = 130] = "INS_EXTERNAL_AUTHENTICATE";
+        ISO7816[ISO7816["INS_GET_CHALLENGE"] = 132] = "INS_GET_CHALLENGE";
+        ISO7816[ISO7816["INS_INTERNAL_AUTHENTICATE"] = 136] = "INS_INTERNAL_AUTHENTICATE";
+        ISO7816[ISO7816["INS_SELECT_FILE"] = 164] = "INS_SELECT_FILE";
+        ISO7816[ISO7816["INS_READ_RECORD"] = 178] = "INS_READ_RECORD";
+        ISO7816[ISO7816["INS_UPDATE_RECORD"] = 220] = "INS_UPDATE_RECORD";
+        ISO7816[ISO7816["INS_VERIFY"] = 32] = "INS_VERIFY";
+        ISO7816[ISO7816["INS_BLOCK_APPLICATION"] = 30] = "INS_BLOCK_APPLICATION";
+        ISO7816[ISO7816["INS_UNBLOCK_APPLICATION"] = 24] = "INS_UNBLOCK_APPLICATION";
+        ISO7816[ISO7816["INS_UNBLOCK_CHANGE_PIN"] = 36] = "INS_UNBLOCK_CHANGE_PIN";
+        ISO7816[ISO7816["INS_GET_DATA"] = 202] = "INS_GET_DATA";
+        ISO7816[ISO7816["TAG_APPLICATION_TEMPLATE"] = 97] = "TAG_APPLICATION_TEMPLATE";
+        ISO7816[ISO7816["TAG_FCI_PROPRIETARY_TEMPLATE"] = 165] = "TAG_FCI_PROPRIETARY_TEMPLATE";
+        ISO7816[ISO7816["TAG_FCI_TEMPLATE"] = 111] = "TAG_FCI_TEMPLATE";
+        ISO7816[ISO7816["TAG_AID"] = 79] = "TAG_AID";
+        ISO7816[ISO7816["TAG_APPLICATION_LABEL"] = 80] = "TAG_APPLICATION_LABEL";
+        ISO7816[ISO7816["TAG_LANGUAGE_PREFERENCES"] = 24365] = "TAG_LANGUAGE_PREFERENCES";
+        ISO7816[ISO7816["TAG_APPLICATION_EFFECTIVE_DATE"] = 24357] = "TAG_APPLICATION_EFFECTIVE_DATE";
+        ISO7816[ISO7816["TAG_APPLICATION_EXPIRY_DATE"] = 24356] = "TAG_APPLICATION_EXPIRY_DATE";
+        ISO7816[ISO7816["TAG_CARDHOLDER_NAME"] = 24352] = "TAG_CARDHOLDER_NAME";
+        ISO7816[ISO7816["TAG_ISSUER_COUNTRY_CODE"] = 24360] = "TAG_ISSUER_COUNTRY_CODE";
+        ISO7816[ISO7816["TAG_ISSUER_URL"] = 24400] = "TAG_ISSUER_URL";
+        ISO7816[ISO7816["TAG_PAN"] = 90] = "TAG_PAN";
+        ISO7816[ISO7816["TAG_PAN_SEQUENCE_NUMBER"] = 24372] = "TAG_PAN_SEQUENCE_NUMBER";
+        ISO7816[ISO7816["TAG_SERVICE_CODE"] = 24368] = "TAG_SERVICE_CODE";
+        ISO7816[ISO7816["ISO_PINBLOCK_SIZE"] = 8] = "ISO_PINBLOCK_SIZE";
+        ISO7816[ISO7816["APDU_LEN_LE_MAX"] = 256] = "APDU_LEN_LE_MAX";
+        ISO7816[ISO7816["SW_SUCCESS"] = 36864] = "SW_SUCCESS";
+        ISO7816[ISO7816["SW_WARNING_NV_MEMORY_UNCHANGED"] = 25088] = "SW_WARNING_NV_MEMORY_UNCHANGED";
+        ISO7816[ISO7816["SW_PART_OF_RETURN_DATA_CORRUPTED"] = 25217] = "SW_PART_OF_RETURN_DATA_CORRUPTED";
+        ISO7816[ISO7816["SW_END_FILE_REACHED_BEFORE_LE_BYTE"] = 25218] = "SW_END_FILE_REACHED_BEFORE_LE_BYTE";
+        ISO7816[ISO7816["SW_SELECTED_FILE_INVALID"] = 25219] = "SW_SELECTED_FILE_INVALID";
+        ISO7816[ISO7816["SW_FCI_NOT_FORMATTED_TO_ISO"] = 25220] = "SW_FCI_NOT_FORMATTED_TO_ISO";
+        ISO7816[ISO7816["SW_WARNING_NV_MEMORY_CHANGED"] = 25344] = "SW_WARNING_NV_MEMORY_CHANGED";
+        ISO7816[ISO7816["SW_FILE_FILLED_BY_LAST_WRITE"] = 25473] = "SW_FILE_FILLED_BY_LAST_WRITE";
+        ISO7816[ISO7816["SW_WRONG_LENGTH"] = 26368] = "SW_WRONG_LENGTH";
+        ISO7816[ISO7816["SW_FUNCTIONS_IN_CLA_NOT_SUPPORTED"] = 26624] = "SW_FUNCTIONS_IN_CLA_NOT_SUPPORTED";
+        ISO7816[ISO7816["SW_LOGICAL_CHANNEL_NOT_SUPPORTED"] = 26753] = "SW_LOGICAL_CHANNEL_NOT_SUPPORTED";
+        ISO7816[ISO7816["SW_SECURE_MESSAGING_NOT_SUPPORTED"] = 26754] = "SW_SECURE_MESSAGING_NOT_SUPPORTED";
+        ISO7816[ISO7816["SW_COMMAND_NOT_ALLOWED"] = 26880] = "SW_COMMAND_NOT_ALLOWED";
+        ISO7816[ISO7816["SW_COMMAND_INCOMPATIBLE_WITH_FILE_STRUCTURE"] = 27009] = "SW_COMMAND_INCOMPATIBLE_WITH_FILE_STRUCTURE";
+        ISO7816[ISO7816["SW_SECURITY_STATUS_NOT_SATISFIED"] = 27010] = "SW_SECURITY_STATUS_NOT_SATISFIED";
+        ISO7816[ISO7816["SW_FILE_INVALID"] = 27011] = "SW_FILE_INVALID";
+        ISO7816[ISO7816["SW_DATA_INVALID"] = 27012] = "SW_DATA_INVALID";
+        ISO7816[ISO7816["SW_CONDITIONS_NOT_SATISFIED"] = 27013] = "SW_CONDITIONS_NOT_SATISFIED";
+        ISO7816[ISO7816["SW_COMMAND_NOT_ALLOWED_AGAIN"] = 27014] = "SW_COMMAND_NOT_ALLOWED_AGAIN";
+        ISO7816[ISO7816["SW_EXPECTED_SM_DATA_OBJECTS_MISSING"] = 27015] = "SW_EXPECTED_SM_DATA_OBJECTS_MISSING";
+        ISO7816[ISO7816["SW_SM_DATA_OBJECTS_INCORRECT"] = 27016] = "SW_SM_DATA_OBJECTS_INCORRECT";
+        ISO7816[ISO7816["SW_WRONG_PARAMS"] = 27136] = "SW_WRONG_PARAMS";
+        ISO7816[ISO7816["SW_WRONG_DATA"] = 27264] = "SW_WRONG_DATA";
+        ISO7816[ISO7816["SW_FUNC_NOT_SUPPORTED"] = 27265] = "SW_FUNC_NOT_SUPPORTED";
+        ISO7816[ISO7816["SW_FILE_NOT_FOUND"] = 27266] = "SW_FILE_NOT_FOUND";
+        ISO7816[ISO7816["SW_RECORD_NOT_FOUND"] = 27267] = "SW_RECORD_NOT_FOUND";
+        ISO7816[ISO7816["SW_NOT_ENOUGH_SPACE_IN_FILE"] = 27268] = "SW_NOT_ENOUGH_SPACE_IN_FILE";
+        ISO7816[ISO7816["SW_LC_INCONSISTENT_WITH_TLV"] = 27269] = "SW_LC_INCONSISTENT_WITH_TLV";
+        ISO7816[ISO7816["SW_INCORRECT_P1P2"] = 27270] = "SW_INCORRECT_P1P2";
+        ISO7816[ISO7816["SW_LC_INCONSISTENT_WITH_P1P2"] = 27271] = "SW_LC_INCONSISTENT_WITH_P1P2";
+        ISO7816[ISO7816["SW_REFERENCED_DATA_NOT_FOUND"] = 27272] = "SW_REFERENCED_DATA_NOT_FOUND";
+        ISO7816[ISO7816["SW_WRONG_P1P2"] = 27392] = "SW_WRONG_P1P2";
+        ISO7816[ISO7816["SW_INS_NOT_SUPPORTED"] = 27904] = "SW_INS_NOT_SUPPORTED";
+        ISO7816[ISO7816["SW_CLA_NOT_SUPPORTED"] = 28160] = "SW_CLA_NOT_SUPPORTED";
+        ISO7816[ISO7816["SW_UNKNOWN"] = 28416] = "SW_UNKNOWN";
+    })(ISO7816 || (exports.ISO7816 = ISO7816 = {}));
+
+    var ResponseAPDU = (function () {
+        function ResponseAPDU(attributes) {
+            _classCallCheck(this, ResponseAPDU);
+
+            this.SW = ISO7816.SW_SUCCESS;
+            this.data = new _cryptographixSimCore.ByteArray();
+            _cryptographixSimCore.Kind.initFields(this, attributes);
+        }
+
+        ResponseAPDU.init = function init(sw, data) {
+            return new ResponseAPDU().set(sw, data);
+        };
+
+        ResponseAPDU.prototype.set = function set(sw, data) {
+            this.SW = sw;
+            this.data = data || new _cryptographixSimCore.ByteArray();
+            return this;
+        };
+
+        ResponseAPDU.prototype.setSW = function setSW(SW) {
+            this.SW = SW;return this;
+        };
+
+        ResponseAPDU.prototype.setSW1 = function setSW1(SW1) {
+            this.SW = this.SW & 0xFF | SW1 << 8;return this;
+        };
+
+        ResponseAPDU.prototype.setSW2 = function setSW2(SW2) {
+            this.SW = this.SW & 0xFF00 | SW2;return this;
+        };
+
+        ResponseAPDU.prototype.setData = function setData(data) {
+            this.data = data;return this;
+        };
+
+        ResponseAPDU.prototype.encodeBytes = function encodeBytes(options) {
+            var ba = new _cryptographixSimCore.ByteArray().setLength(this.La + 2);
+            ba.setBytesAt(0, this.data);
+            ba.setByteAt(this.La, this.SW >> 8 & 0xff);
+            ba.setByteAt(this.La + 1, this.SW >> 0 & 0xff);
+            return ba;
+        };
+
+        ResponseAPDU.prototype.decodeBytes = function decodeBytes(byteArray, options) {
+            if (byteArray.length < 2) throw new Error('ResponseAPDU Buffer invalid');
+            var la = byteArray.length - 2;
+            this.SW = byteArray.wordAt(la);
+            this.data = la ? byteArray.bytesAt(0, la) : new _cryptographixSimCore.ByteArray();
+            return this;
+        };
+
+        _createClass(ResponseAPDU, [{
+            key: "La",
+            get: function get() {
+                return this.data.length;
+            }
+        }]);
+
+        return ResponseAPDU;
+    })();
+
+    exports.ResponseAPDU = ResponseAPDU;
+
+    _cryptographixSimCore.KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').integerField('SW', 'Status Word', { maximum: 0xFFFF }).integerField('La', 'Actual Length', { calculated: true }).field('Data', 'Response Data', _cryptographixSimCore.ByteArray);
+
+    var SlotProtocolHandler = (function () {
+        function SlotProtocolHandler() {
+            _classCallCheck(this, SlotProtocolHandler);
+        }
+
+        SlotProtocolHandler.prototype.linkSlot = function linkSlot(slot, endPoint) {
+            var me = this;
+            this.endPoint = endPoint;
+            this.slot = slot;
+            endPoint.onMessage(function (msg, ep) {
+                me.onMessage(msg, ep);
+            });
+        };
+
+        SlotProtocolHandler.prototype.unlinkSlot = function unlinkSlot() {
+            this.endPoint.onMessage(null);
+            this.endPoint = null;
+            this.slot = null;
+        };
+
+        SlotProtocolHandler.prototype.onMessage = function onMessage(packet, receivingEndPoint) {
+            var hdr = packet.header;
+            var payload = packet.payload;
+            var response = undefined;
+            var replyHeader = { method: hdr.method, isResponse: true };
+            switch (hdr.method) {
+                case "executeAPDU":
+                    if (!(payload instanceof CommandAPDU)) break;
+                    response = this.slot.executeAPDU(payload);
+                    response.then(function (responseAPDU) {
+                        var replyPacket = new _cryptographixSimCore.Message(replyHeader, responseAPDU);
+                        receivingEndPoint.sendMessage(replyPacket);
+                    });
+                    break;
+                case "powerOff":
+                    response = this.slot.powerOff().then(function (respData) {
+                        receivingEndPoint.sendMessage(new _cryptographixSimCore.Message(replyHeader, new _cryptographixSimCore.ByteArray()));
+                    });
+                    break;
+                case "powerOn":
+                    response = this.slot.powerOn().then(function (respData) {
+                        receivingEndPoint.sendMessage(new _cryptographixSimCore.Message(replyHeader, respData));
+                    });
+                    break;
+                case "reset":
+                    response = this.slot.reset().then(function (respData) {
+                        receivingEndPoint.sendMessage(new _cryptographixSimCore.Message(replyHeader, respData));
+                    });
+                    break;
+                default:
+                    response = Promise.reject(new Error("Invalid method" + hdr.method));
+                    break;
+            }
+            response["catch"](function (e) {
+                var errorPacket = new _cryptographixSimCore.Message({ method: "error" }, e);
+                receivingEndPoint.sendMessage(errorPacket);
+            });
+        };
+
+        return SlotProtocolHandler;
+    })();
+
+    exports.SlotProtocolHandler = SlotProtocolHandler;
 
     var JSSimulatedSlot = (function () {
         function JSSimulatedSlot() {
@@ -1042,7 +1046,7 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
         };
 
         _createClass(JSIMScriptCard, [{
-            key: 'isPowered',
+            key: "isPowered",
             get: function get() {
                 return this._powerIsOn;
             }
@@ -1094,12 +1098,12 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
         };
 
         _createClass(JSIMSlot, [{
-            key: 'isPresent',
+            key: "isPresent",
             get: function get() {
                 return !!this.card;
             }
         }, {
-            key: 'isPowered',
+            key: "isPowered",
             get: function get() {
                 return this.isPresent && this.card.isPowered;
             }
@@ -2198,7 +2202,7 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
         };
 
         _createClass(MELVirtualMachine, [{
-            key: 'getDebug',
+            key: "getDebug",
             get: function get() {
                 return {
                     ramSegment: this.ramSegment,
@@ -2328,7 +2332,7 @@ define(['exports', 'cryptographix-sim-core'], function (exports, _cryptographixS
         };
 
         _createClass(JSIMMultosCard, [{
-            key: 'isPowered',
+            key: "isPowered",
             get: function get() {
                 return this.powerIsOn;
             }

@@ -1,6 +1,6 @@
-import { ISO7816 } from '../base/ISO7816';
-import { CommandAPDU } from '../base/command-apdu';
-import { ResponseAPDU } from '../base/response-apdu';
+import { ISO7816 } from '../iso7816/ISO7816';
+import { CommandAPDU } from '../iso7816/command-apdu';
+import { ResponseAPDU } from '../iso7816/response-apdu';
 
 export class JSIMScriptApplet
 {

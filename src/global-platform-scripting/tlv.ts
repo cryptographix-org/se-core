@@ -1,4 +1,4 @@
-import { BaseTLV as BaseTLV } from '../base/base-tlv';
+import { BaseTLV as BaseTLV } from '../iso7816/base-tlv';
 import { ByteString } from './byte-string';
 import { ByteBuffer } from './byte-buffer';
 

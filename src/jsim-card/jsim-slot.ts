@@ -1,8 +1,8 @@
 import { ByteArray } from 'cryptographix-sim-core';
 
-import { Slot } from '../base/slot';
-import { CommandAPDU } from '../base/command-apdu';
-import { ResponseAPDU } from '../base/response-apdu';
+import { Slot } from '../iso7816/slot';
+import { CommandAPDU } from '../iso7816/command-apdu';
+import { ResponseAPDU } from '../iso7816/response-apdu';
 import { JSIMCard } from './jsim-card';
 
 export class JSIMSlot implements Slot
@@ -32,10 +32,10 @@ export class JSIMSlot implements Slot
     return this.card.powerOn();
   }
 
-  powerOff(): Promise<boolean>
+  powerOff(): Promise<ByteArray>
   {
     if ( !this.isPresent )
-      return Promise.reject<boolean>( new Error( "JSIM: Card not present" ) );
+      return Promise.reject<ByteArray>( new Error( "JSIM: Card not present" ) );
 
     return this.card.powerOff();
   }

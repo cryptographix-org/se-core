@@ -1100,9 +1100,12 @@ System.register(["cryptographix-sim-core"], function (_export) {
                 }
 
                 SlotProtocolHandler.prototype.linkSlot = function linkSlot(slot, endPoint) {
+                    var me = this;
                     this.endPoint = endPoint;
                     this.slot = slot;
-                    endPoint.onMessage(this.onMessage);
+                    endPoint.onMessage(function (msg, ep) {
+                        me.onMessage(msg, ep);
+                    });
                 };
 
                 SlotProtocolHandler.prototype.unlinkSlot = function unlinkSlot() {
@@ -1115,28 +1118,29 @@ System.register(["cryptographix-sim-core"], function (_export) {
                     var hdr = packet.header;
                     var payload = packet.payload;
                     var response = undefined;
+                    var replyHeader = { method: hdr.method, isResponse: true };
                     switch (hdr.method) {
                         case "executeAPDU":
                             if (!(payload instanceof CommandAPDU)) break;
                             response = this.slot.executeAPDU(payload);
                             response.then(function (responseAPDU) {
-                                var replyPacket = new Message({ method: "executeAPDU" }, responseAPDU);
+                                var replyPacket = new Message(replyHeader, responseAPDU);
                                 receivingEndPoint.sendMessage(replyPacket);
                             });
                             break;
                         case "powerOff":
                             response = this.slot.powerOff().then(function (respData) {
-                                receivingEndPoint.sendMessage(new Message({ method: hdr.method }, new ByteArray()));
+                                receivingEndPoint.sendMessage(new Message(replyHeader, new ByteArray()));
                             });
                             break;
                         case "powerOn":
                             response = this.slot.powerOn().then(function (respData) {
-                                receivingEndPoint.sendMessage(new Message({ method: hdr.method }, respData));
+                                receivingEndPoint.sendMessage(new Message(replyHeader, respData));
                             });
                             break;
                         case "reset":
                             response = this.slot.reset().then(function (respData) {
-                                receivingEndPoint.sendMessage(new Message({ method: hdr.method }, respData));
+                                receivingEndPoint.sendMessage(new Message(replyHeader, respData));
                             });
                             break;
                         default:

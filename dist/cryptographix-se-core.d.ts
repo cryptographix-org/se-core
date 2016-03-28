@@ -1,6 +1,87 @@
 declare module 'cryptographix-se-core'
 {
-  import { ByteArray, Kind, EndPoint, Message, ByteEncoding, KindInfo } from 'cryptographix-sim-core';
+  import { ByteArray, ByteEncoding, Kind, EndPoint, Message, KindInfo } from 'cryptographix-sim-core';
+
+
+  export class Key {
+      _type: number;
+      _size: number;
+      _componentArray: ByteString[];
+      constructor();
+      setType(keyType: number): void;
+      getType(): number;
+      setSize(size: number): void;
+      getSize(): number;
+      setComponent(comp: number, value: ByteString): void;
+      getComponent(comp: number): ByteString;
+      static SECRET: number;
+      static PRIVATE: number;
+      static PUBLIC: number;
+      static DES: number;
+      static AES: number;
+      static MODULUS: number;
+      static EXPONENT: number;
+      static CRT_P: number;
+      static CRT_Q: number;
+      static CRT_DP1: number;
+      static CRT_DQ1: number;
+      static CRT_PQ: number;
+  }
+
+
+
+  export class Crypto {
+      constructor();
+      encrypt(key: Key, mech: any, data: ByteString): ByteString;
+      decrypt(key: any, mech: any, data: any): any;
+      sign(key: Key, mech: any, data: ByteString, iv?: any): ByteString;
+      static desPC: any;
+      static desSP: any;
+      private des(key, message, encrypt, mode, iv?, padding?);
+      verify(key: any, mech: any, data: any, signature: any, iv: any): any;
+      digest(mech: any, data: any): any;
+      static DES_CBC: Number;
+      static DES_ECB: number;
+      static DES_MAC: number;
+      static DES_MAC_EMV: number;
+      static ISO9797_METHOD_1: number;
+      static ISO9797_METHOD_2: number;
+      static MD5: number;
+      static RSA: number;
+      static SHA_1: number;
+      static SHA_512: number;
+  }
+
+  export class ByteString {
+      byteArray: ByteArray;
+      static HEX: ByteEncoding;
+      static BASE64: ByteEncoding;
+      constructor(value: string | ByteString | ByteArray, encoding?: number);
+      length: number;
+      bytes(offset: number, count?: number): ByteString;
+      byteAt(offset: number): number;
+      equals(otherByteString: ByteString): void;
+      concat(value: ByteString): ByteString;
+      left(count: number): ByteString;
+      right(count: number): ByteString;
+      not(): ByteString;
+      and(value: ByteString): ByteString;
+      or(value: ByteString): ByteString;
+      pad(method: number, optional?: boolean): ByteString;
+      toString(encoding?: number): string;
+  }
+  export const HEX: ByteEncoding;
+  export const BASE64: ByteEncoding;
+
+
+  export class ByteBuffer {
+      byteArray: ByteArray;
+      constructor(value?: ByteArray | ByteString | string, encoding?: any);
+      length: number;
+      toByteString(): ByteString;
+      clear(): void;
+      append(value: ByteString | ByteBuffer | number): ByteBuffer;
+  }
 
   export class BaseTLV {
       static Encodings: {
@@ -20,6 +101,36 @@ declare module 'cryptographix-se-core'
       tag: number;
       value: ByteArray;
       len: number;
+  }
+
+
+
+  export class TLV {
+      tlv: BaseTLV;
+      encoding: number;
+      constructor(tag: number, value: ByteString, encoding: number);
+      getTLV(): ByteString;
+      getTag(): number;
+      getValue(): ByteString;
+      getL(): ByteString;
+      getLV(): ByteString;
+      static parseTLV(buffer: ByteString, encoding: number): {
+          tag: number;
+          len: number;
+          value: ByteString;
+          lenOffset: number;
+          valueOffset: number;
+      };
+      static EMV: number;
+      static DGI: number;
+  }
+
+
+
+  export class TLVList {
+      _tlvs: TLV[];
+      constructor(tlvStream: ByteString, encoding?: number);
+      index(index: number): TLV;
   }
 
   export class CommandAPDU implements Kind {
@@ -132,7 +243,7 @@ declare module 'cryptographix-se-core'
       isPresent: boolean;
       isPowered: boolean;
       powerOn(): Promise<ByteArray>;
-      powerOff(): Promise<boolean>;
+      powerOff(): Promise<ByteArray>;
       reset(): Promise<ByteArray>;
       executeAPDU(commandAPDU: CommandAPDU): Promise<ResponseAPDU>;
   }
@@ -150,126 +261,10 @@ declare module 'cryptographix-se-core'
 
 
 
-
-
-
-  export class Key {
-      _type: number;
-      _size: number;
-      _componentArray: ByteString[];
-      constructor();
-      setType(keyType: number): void;
-      getType(): number;
-      setSize(size: number): void;
-      getSize(): number;
-      setComponent(comp: number, value: ByteString): void;
-      getComponent(comp: number): ByteString;
-      static SECRET: number;
-      static PRIVATE: number;
-      static PUBLIC: number;
-      static DES: number;
-      static AES: number;
-      static MODULUS: number;
-      static EXPONENT: number;
-      static CRT_P: number;
-      static CRT_Q: number;
-      static CRT_DP1: number;
-      static CRT_DQ1: number;
-      static CRT_PQ: number;
-  }
-
-
-
-  export class Crypto {
-      constructor();
-      encrypt(key: Key, mech: any, data: ByteString): ByteString;
-      decrypt(key: any, mech: any, data: any): any;
-      sign(key: Key, mech: any, data: ByteString, iv?: any): ByteString;
-      static desPC: any;
-      static desSP: any;
-      private des(key, message, encrypt, mode, iv?, padding?);
-      verify(key: any, mech: any, data: any, signature: any, iv: any): any;
-      digest(mech: any, data: any): any;
-      static DES_CBC: Number;
-      static DES_ECB: number;
-      static DES_MAC: number;
-      static DES_MAC_EMV: number;
-      static ISO9797_METHOD_1: number;
-      static ISO9797_METHOD_2: number;
-      static MD5: number;
-      static RSA: number;
-      static SHA_1: number;
-      static SHA_512: number;
-  }
-
-  export class ByteString {
-      byteArray: ByteArray;
-      static HEX: ByteEncoding;
-      static BASE64: ByteEncoding;
-      constructor(value: string | ByteString | ByteArray, encoding?: number);
-      length: number;
-      bytes(offset: number, count?: number): ByteString;
-      byteAt(offset: number): number;
-      equals(otherByteString: ByteString): void;
-      concat(value: ByteString): ByteString;
-      left(count: number): ByteString;
-      right(count: number): ByteString;
-      not(): ByteString;
-      and(value: ByteString): ByteString;
-      or(value: ByteString): ByteString;
-      pad(method: number, optional?: boolean): ByteString;
-      toString(encoding?: number): string;
-  }
-  export const HEX: ByteEncoding;
-  export const BASE64: ByteEncoding;
-
-
-  export class ByteBuffer {
-      byteArray: ByteArray;
-      constructor(value?: ByteArray | ByteString | string, encoding?: any);
-      length: number;
-      toByteString(): ByteString;
-      clear(): void;
-      append(value: ByteString | ByteBuffer | number): ByteBuffer;
-  }
-
-
-
-  export class TLV {
-      tlv: BaseTLV;
-      encoding: number;
-      constructor(tag: number, value: ByteString, encoding: number);
-      getTLV(): ByteString;
-      getTag(): number;
-      getValue(): ByteString;
-      getL(): ByteString;
-      getLV(): ByteString;
-      static parseTLV(buffer: ByteString, encoding: number): {
-          tag: number;
-          len: number;
-          value: ByteString;
-          lenOffset: number;
-          valueOffset: number;
-      };
-      static EMV: number;
-      static DGI: number;
-  }
-
-
-
-  export class TLVList {
-      _tlvs: TLV[];
-      constructor(tlvStream: ByteString, encoding?: number);
-      index(index: number): TLV;
-  }
-
-
-
-
   export interface JSIMCard {
       isPowered: boolean;
       powerOn(): Promise<ByteArray>;
-      powerOff(): Promise<boolean>;
+      powerOff(): Promise<ByteArray>;
       reset(): Promise<ByteArray>;
       exchangeAPDU(commandAPDU: CommandAPDU): Promise<ResponseAPDU>;
   }
@@ -313,7 +308,7 @@ declare module 'cryptographix-se-core'
       isPresent: boolean;
       isPowered: boolean;
       powerOn(): Promise<ByteArray>;
-      powerOff(): Promise<boolean>;
+      powerOff(): Promise<ByteArray>;
       reset(): Promise<ByteArray>;
       executeAPDU(commandAPDU: CommandAPDU): Promise<ResponseAPDU>;
       insertCard(card: JSIMCard): void;
@@ -613,4 +608,9 @@ declare module 'cryptographix-se-core'
       decodeBytes(bytes: ByteArray, options?: Object): ALU;
       encodeBytes(options?: {}): ByteArray;
   }
+
+
+
+
+
 }

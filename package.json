@@ -9,6 +9,9 @@
     "smart-card",
     "secure-elements"
   ],
+  "scripts": {
+    "upd": "cp ../sim-core/dist/amd/cryptographix-sim-core* ./jspm_packages/npm/cryptographix-sim-core@0.2.0-devel/"
+  },
   "homepage": "http://cryptographix.org",
   "bugs": {
     "url": "https://github.com/cryptographix/se-core/issues"
