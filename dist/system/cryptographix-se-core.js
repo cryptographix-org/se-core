@@ -1,7 +1,7 @@
 System.register(["cryptographix-sim-core"], function (_export) {
     "use strict";
 
-    var ByteArray, ByteEncoding, Kind, KindBuilder, Message, Key, Crypto, ByteString, HEX, BASE64, ByteBuffer, BaseTLV, TLV, TLVList, CommandAPDU, ISO7816, ResponseAPDU, SlotProtocolHandler, JSSimulatedSlot, JSIMScriptApplet, JSIMScriptCard, JSIMSlot, MEMFLAGS, Segment, Accessor, MemoryManager, MELINST, MELTAGADDR, MELTAGCOND, MELTAGSYSTEM, MELTAGSTACK, MELTAGPRIMRET, MELPARAMDEF, MEL, MELDecode, MEL_CCR_Z, MEL_CCR_C, MELVirtualMachine, JSIMMultosApplet, JSIMMultosCard, setZeroPrimitives, setOnePrimitives, setTwoPrimitives, setThreePrimitives, primitiveSets, SecurityManager, ADC, ALC, ALU;
+    var ByteArray, ByteEncoding, Kind, KindBuilder, Message, Key, Crypto, ByteString, HEX, BASE64, ByteBuffer, BaseTLV, TLV, TLVList, CommandAPDU, ISO7816, ResponseAPDU, SlotProtocol, SlotProtocolProxy, SlotProtocolHandler, JSSimulatedSlot, JSIMScriptApplet, JSIMScriptCard, JSIMSlot, MEMFLAGS, Segment, Accessor, MemoryManager, MELINST, MELTAGADDR, MELTAGCOND, MELTAGSYSTEM, MELTAGSTACK, MELTAGPRIMRET, MELPARAMDEF, MEL, MELDecode, MEL_CCR_Z, MEL_CCR_C, MELVirtualMachine, JSIMMultosApplet, JSIMMultosCard, setZeroPrimitives, setOnePrimitives, setTwoPrimitives, setThreePrimitives, primitiveSets, SecurityManager, ADC, ALC, ALU;
 
     var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
@@ -1093,6 +1093,96 @@ System.register(["cryptographix-sim-core"], function (_export) {
             _export("ResponseAPDU", ResponseAPDU);
 
             KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').integerField('SW', 'Status Word', { maximum: 0xFFFF }).integerField('La', 'Actual Length', { calculated: true }).field('Data', 'Response Data', ByteArray);
+
+            SlotProtocol = (function () {
+                function SlotProtocol() {
+                    _classCallCheck(this, SlotProtocol);
+                }
+
+                SlotProtocol.getHandler = function getHandler() {
+                    return new SlotProtocolHandler();
+                };
+
+                SlotProtocol.getProxy = function getProxy(endPoint) {
+                    return new SlotProtocolProxy(endPoint);
+                };
+
+                return SlotProtocol;
+            })();
+
+            _export("SlotProtocol", SlotProtocol);
+
+            SlotProtocolProxy = (function () {
+                function SlotProtocolProxy(endPoint) {
+                    _classCallCheck(this, SlotProtocolProxy);
+
+                    this.endPoint = endPoint;
+                    var me = this;
+                    endPoint.onMessage(function (msg) {
+                        var pendingOp = me.pending;
+                        if (pendingOp) {
+                            if (msg.header.isResponse && msg.header.method == pendingOp.method) {
+                                pendingOp.resolve(msg.payload);
+                                return;
+                            } else {
+                                pendingOp.reject(msg.payload);
+                            }
+                        }
+                    });
+                }
+
+                SlotProtocolProxy.prototype.powerCommand = function powerCommand(method) {
+                    var me = this;
+                    return new Promise(function (resolve, reject) {
+                        me.pending = {
+                            method: method,
+                            resolve: resolve,
+                            reject: reject
+                        };
+                        me.endPoint.sendMessage(new Message({ method: method }, null));
+                    });
+                };
+
+                SlotProtocolProxy.prototype.powerOn = function powerOn() {
+                    return this.powerCommand('powerOn');
+                };
+
+                SlotProtocolProxy.prototype.reset = function reset() {
+                    return this.powerCommand('reset');
+                };
+
+                SlotProtocolProxy.prototype.powerOff = function powerOff() {
+                    return this.powerCommand('powerOff');
+                };
+
+                SlotProtocolProxy.prototype.executeAPDU = function executeAPDU(cmd) {
+                    var me = this;
+                    return new Promise(function (resolve, reject) {
+                        me.pending = {
+                            method: 'executeAPDU',
+                            resolve: resolve,
+                            reject: reject
+                        };
+                        me.endPoint.sendMessage(new Message({ method: 'executeAPDU' }, cmd));
+                    });
+                };
+
+                _createClass(SlotProtocolProxy, [{
+                    key: "isPresent",
+                    get: function get() {
+                        return false;
+                    }
+                }, {
+                    key: "isPowered",
+                    get: function get() {
+                        return false;
+                    }
+                }]);
+
+                return SlotProtocolProxy;
+            })();
+
+            _export("SlotProtocolProxy", SlotProtocolProxy);
 
             SlotProtocolHandler = (function () {
                 function SlotProtocolHandler() {

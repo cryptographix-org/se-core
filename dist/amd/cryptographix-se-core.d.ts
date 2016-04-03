@@ -1,6 +1,6 @@
 declare module 'cryptographix-se-core'
 {
-  import { ByteArray, ByteEncoding, Kind, EndPoint, Message, KindInfo } from 'cryptographix-sim-core';
+  import { ByteArray, ByteEncoding, Kind, EndPoint, Message, Protocol, KindInfo } from 'cryptographix-sim-core';
 
 
   export class Key {
@@ -133,6 +133,11 @@ declare module 'cryptographix-se-core'
       index(index: number): TLV;
   }
 
+
+
+
+
+
   export class CommandAPDU implements Kind {
       CLA: number;
       INS: number;
@@ -153,7 +158,7 @@ declare module 'cryptographix-se-core'
       setLe(Le: number): CommandAPDU;
       toJSON(): {};
       encodeBytes(options?: {}): ByteArray;
-      decodeBytes(byteArray: ByteArray, options?: {}): CommandAPDU;
+      decodeBytes(byteArray: ByteArray, options?: {}): this;
   }
 
   export enum ISO7816 {
@@ -234,7 +239,7 @@ declare module 'cryptographix-se-core'
       setSW2(SW2: number): ResponseAPDU;
       setData(data: ByteArray): ResponseAPDU;
       encodeBytes(options?: {}): ByteArray;
-      decodeBytes(byteArray: ByteArray, options?: {}): ResponseAPDU;
+      decodeBytes(byteArray: ByteArray, options?: {}): this;
   }
 
 
@@ -249,6 +254,24 @@ declare module 'cryptographix-se-core'
   }
 
 
+
+
+  export class SlotProtocol implements Protocol<Slot> {
+      static getHandler(): SlotProtocolHandler;
+      static getProxy(endPoint: EndPoint): SlotProtocolProxy;
+  }
+  export class SlotProtocolProxy implements Slot {
+      endPoint: EndPoint;
+      pending: any;
+      private powerCommand(method);
+      constructor(endPoint: EndPoint);
+      powerOn(): Promise<ByteArray>;
+      reset(): Promise<ByteArray>;
+      powerOff(): Promise<ByteArray>;
+      isPresent: boolean;
+      isPowered: boolean;
+      executeAPDU(cmd: CommandAPDU): Promise<ResponseAPDU>;
+  }
   export class SlotProtocolHandler {
       endPoint: EndPoint;
       slot: Slot;
@@ -605,12 +628,7 @@ declare module 'cryptographix-se-core'
       constructor(attributes?: {});
       toJSON(): {};
       private getALUSegment(bytes, segmentID);
-      decodeBytes(bytes: ByteArray, options?: Object): ALU;
+      decodeBytes(bytes: ByteArray, options?: Object): this;
       encodeBytes(options?: {}): ByteArray;
   }
-
-
-
-
-
 }

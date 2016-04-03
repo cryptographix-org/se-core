@@ -55,7 +55,7 @@ export class ResponseAPDU implements Kind
     return ba;
   }
 
-  public decodeBytes( byteArray: ByteArray, options?: {} ): ResponseAPDU
+  public decodeBytes( byteArray: ByteArray, options?: {} ): this
   {
     if ( byteArray.length < 2 )
       throw new Error( 'ResponseAPDU Buffer invalid' );

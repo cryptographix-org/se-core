@@ -95,7 +95,7 @@ export class CommandAPDU implements Kind
   /**
   * Decoder
   */
-  public decodeBytes( byteArray: ByteArray, options?: {} ): CommandAPDU
+  public decodeBytes( byteArray: ByteArray, options?: {} ): this
   {
     if ( byteArray.length < 4 )
       throw new Error( 'CommandAPDU: Invalid buffer' );

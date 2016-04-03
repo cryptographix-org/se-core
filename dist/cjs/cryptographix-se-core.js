@@ -872,6 +872,96 @@ exports.ResponseAPDU = ResponseAPDU;
 
 _cryptographixSimCore.KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').integerField('SW', 'Status Word', { maximum: 0xFFFF }).integerField('La', 'Actual Length', { calculated: true }).field('Data', 'Response Data', _cryptographixSimCore.ByteArray);
 
+var SlotProtocol = (function () {
+    function SlotProtocol() {
+        _classCallCheck(this, SlotProtocol);
+    }
+
+    SlotProtocol.getHandler = function getHandler() {
+        return new SlotProtocolHandler();
+    };
+
+    SlotProtocol.getProxy = function getProxy(endPoint) {
+        return new SlotProtocolProxy(endPoint);
+    };
+
+    return SlotProtocol;
+})();
+
+exports.SlotProtocol = SlotProtocol;
+
+var SlotProtocolProxy = (function () {
+    function SlotProtocolProxy(endPoint) {
+        _classCallCheck(this, SlotProtocolProxy);
+
+        this.endPoint = endPoint;
+        var me = this;
+        endPoint.onMessage(function (msg) {
+            var pendingOp = me.pending;
+            if (pendingOp) {
+                if (msg.header.isResponse && msg.header.method == pendingOp.method) {
+                    pendingOp.resolve(msg.payload);
+                    return;
+                } else {
+                    pendingOp.reject(msg.payload);
+                }
+            }
+        });
+    }
+
+    SlotProtocolProxy.prototype.powerCommand = function powerCommand(method) {
+        var me = this;
+        return new Promise(function (resolve, reject) {
+            me.pending = {
+                method: method,
+                resolve: resolve,
+                reject: reject
+            };
+            me.endPoint.sendMessage(new _cryptographixSimCore.Message({ method: method }, null));
+        });
+    };
+
+    SlotProtocolProxy.prototype.powerOn = function powerOn() {
+        return this.powerCommand('powerOn');
+    };
+
+    SlotProtocolProxy.prototype.reset = function reset() {
+        return this.powerCommand('reset');
+    };
+
+    SlotProtocolProxy.prototype.powerOff = function powerOff() {
+        return this.powerCommand('powerOff');
+    };
+
+    SlotProtocolProxy.prototype.executeAPDU = function executeAPDU(cmd) {
+        var me = this;
+        return new Promise(function (resolve, reject) {
+            me.pending = {
+                method: 'executeAPDU',
+                resolve: resolve,
+                reject: reject
+            };
+            me.endPoint.sendMessage(new _cryptographixSimCore.Message({ method: 'executeAPDU' }, cmd));
+        });
+    };
+
+    _createClass(SlotProtocolProxy, [{
+        key: "isPresent",
+        get: function get() {
+            return false;
+        }
+    }, {
+        key: "isPowered",
+        get: function get() {
+            return false;
+        }
+    }]);
+
+    return SlotProtocolProxy;
+})();
+
+exports.SlotProtocolProxy = SlotProtocolProxy;
+
 var SlotProtocolHandler = (function () {
     function SlotProtocolHandler() {
         _classCallCheck(this, SlotProtocolHandler);

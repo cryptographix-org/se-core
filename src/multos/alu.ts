@@ -54,7 +54,7 @@ export class ALU implements Kind
   /**
    * Decoder factory function, decodes a blob into a MultosALU object
    */
-  public decodeBytes( bytes: ByteArray, options?: Object ): ALU
+  public decodeBytes( bytes: ByteArray, options?: Object ): this
   {
     this.code = this.getALUSegment( bytes, 1 );
     this.data = this.getALUSegment( bytes, 2 );

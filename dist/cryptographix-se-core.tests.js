@@ -1131,6 +1131,72 @@ describe('Multos ALU', () => {
     });
 });
 
+class MockSlot {
+    constructor(isPresent = true) {
+        this._atr = [0x3B, 0x90, 0x01, 0x00];
+        this.isPowered = false;
+        this.isPresent = isPresent;
+    }
+    powerOn() {
+        this.isPowered = true;
+        return Promise.resolve(new ByteArray(this._atr));
+    }
+    powerOff() {
+        this.isPowered = false;
+        return Promise.resolve(new ByteArray());
+    }
+    reset() {
+        this.isPowered = true;
+        return Promise.resolve(new ByteArray(this._atr));
+    }
+    executeAPDU(commandAPDU) {
+        this.isPowered = true;
+        return Promise.resolve(new ResponseAPDU({ SW: 0x9000 }));
+    }
+}
+function makeMockSlotEndPoint() {
+    let slot = new MockSlot();
+    let handler = new SlotProtocolHandler();
+    let inPoint = new EndPoint('in', Direction.IN);
+    let outPoint = new EndPoint('out', Direction.OUT);
+    handler.linkSlot(slot, inPoint);
+    let chan = new Channel();
+    inPoint.attach(chan);
+    outPoint.attach(chan);
+    chan.activate();
+    function xchgAPDU(cmd) {
+        return new Promise((resolve, reject) => {
+            outPoint.sendMessage(new Message({ method: "executeAPDU" }, cmd));
+            outPoint.onMessage((msg) => {
+                if (msg.header.method == 'executeAPDU')
+                    resolve(msg.payload);
+                else
+                    reject(msg.payload);
+            });
+        });
+    }
+    return {
+        endPoint: outPoint,
+        xchangeAPDU: xchgAPDU,
+        handler: handler
+    };
+}
+describe('SlotProtocolHandler', () => {
+    it('acts as a message proxy for a Slot', (done) => {
+        let mocker = makeMockSlotEndPoint();
+        mocker.xchangeAPDU(new CommandAPDU({ INS: 0xA4 }))
+            .then((resp) => {
+            expect(resp.SW).toEqual(0x9000);
+            console.log('Response:' + resp.SW.toString(16));
+            done();
+        })
+            .catch((err) => {
+            console.log('Error: ' + err);
+            done.fail();
+        });
+    });
+});
+
 var ISD = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x09, 0x15,
@@ -1318,69 +1384,3 @@ var ISD = [
     0x20, 0x06, 0x9F, 0x64, 0x02, 0x02, 0x15, 0x9F, 0x65, 0x01, 0xFF, 0x00, 0x00, 0x00, 0x00
 ];
 export { ISD };
-
-class MockSlot {
-    constructor(isPresent = true) {
-        this._atr = [0x3B, 0x90, 0x01, 0x00];
-        this.isPowered = false;
-        this.isPresent = isPresent;
-    }
-    powerOn() {
-        this.isPowered = true;
-        return Promise.resolve(new ByteArray(this._atr));
-    }
-    powerOff() {
-        this.isPowered = false;
-        return Promise.resolve(new ByteArray());
-    }
-    reset() {
-        this.isPowered = true;
-        return Promise.resolve(new ByteArray(this._atr));
-    }
-    executeAPDU(commandAPDU) {
-        this.isPowered = true;
-        return Promise.resolve(new ResponseAPDU({ SW: 0x9000 }));
-    }
-}
-function makeMockSlotEndPoint() {
-    let slot = new MockSlot();
-    let handler = new SlotProtocolHandler();
-    let inPoint = new EndPoint('in', Direction.IN);
-    let outPoint = new EndPoint('out', Direction.OUT);
-    handler.linkSlot(slot, inPoint);
-    let chan = new Channel();
-    inPoint.attach(chan);
-    outPoint.attach(chan);
-    chan.activate();
-    function xchgAPDU(cmd) {
-        return new Promise((resolve, reject) => {
-            outPoint.sendMessage(new Message({ method: "executeAPDU" }, cmd));
-            outPoint.onMessage((msg) => {
-                if (msg.header.method == 'executeAPDU')
-                    resolve(msg.payload);
-                else
-                    reject(msg.payload);
-            });
-        });
-    }
-    return {
-        endPoint: outPoint,
-        xchangeAPDU: xchgAPDU,
-        handler: handler
-    };
-}
-describe('SlotProtocolHandler', () => {
-    it('acts as a message proxy for a Slot', (done) => {
-        let mocker = makeMockSlotEndPoint();
-        mocker.xchangeAPDU(new CommandAPDU({ INS: 0xA4 }))
-            .then((resp) => {
-            expect(resp.SW).toEqual(0x9000);
-            console.log('Response:' + resp.SW.toString(16));
-            done();
-        })
-            .catch((err) => {
-            console.log('Error: ' + err);
-            done.fail();
-        });
-    });
-});
