@@ -1,7 +1,6 @@
 import { ByteArray, Message, Direction, EndPoint, Channel } from 'cryptographix-sim-core';
 import { CommandAPDU, ResponseAPDU, ISO7816, Slot, SlotProtocolHandler } from 'cryptographix-se-core';
 
-
 class MockSlot implements Slot
 {
   private _atr = [ 0x3B, 0x90, 0x01, 0x00 ];

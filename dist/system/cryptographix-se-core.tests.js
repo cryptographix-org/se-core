@@ -66,7 +66,7 @@ System.register(['cryptographix-se-core', 'cryptographix-sim-core'], function (_
                         return card.exchangeAPDU(selectAPDU);
                     }).then(function (rAPDU) {
                         console.log(rAPDU);
-                        var gpoAPDU = CommandAPDU.init().setData(new ByteArray([0x83, 0x00]));
+                        var gpoAPDU = CommandAPDU.init().setINS(0xB8).setData(new ByteArray([0x83, 0x00]));
                         return card.exchangeAPDU(gpoAPDU);
                     }).then(function (rAPDU) {
                         card.executeStep();
@@ -74,7 +74,7 @@ System.register(['cryptographix-se-core', 'cryptographix-sim-core'], function (_
                         card.executeStep();
                         card.executeStep();
                         console.log(rAPDU);
-                        var gacAPDU = CommandAPDU.init().setData(new ByteArray([0x83, 0x00]));
+                        var gacAPDU = CommandAPDU.init().setINS(0xAC).setData(new ByteArray([0x00, 0x00]));
                         return card.exchangeAPDU(gacAPDU);
                     }).then(function (rAPDU) {
                         console.log(rAPDU);

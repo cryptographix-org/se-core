@@ -1,28 +1,23 @@
-import { ByteArray, Kind, KindInfo, KindBuilder } from 'cryptographix-sim-core';
+import { ByteArray, Kind, KindConstructor, KindBuilder } from 'cryptographix-sim-core';
 
 /**
  * Encoder/Decodor for a MULTOS Application Load Unit
  */
 export class ALU implements Kind
 {
-  static kindInfo: KindInfo;
-
-  code: ByteArray = new ByteArray();
-  data: ByteArray = new ByteArray();
-  fci: ByteArray = new ByteArray();
-  dir: ByteArray = new ByteArray();
+  code: ByteArray;
+  data: ByteArray;;
+  fci: ByteArray;;
+  dir: ByteArray;;
 
   /**
    * @constructor
+   *
+   * Deserialize from a JSON object
    */
   constructor( attributes?: {} )
   {
-    if ( attributes )
-    {
-      for( let field in ALU.kindInfo.fields )
-        if ( attributes[ field.id ] )
-          this[ field.id ] = attributes[ field.id ];
-    }
+    Kind.initFields( this, attributes );
   }
 
   /**

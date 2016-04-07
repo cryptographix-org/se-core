@@ -6,13 +6,11 @@ import {  ByteArray, Kind, KindBuilder, KindInfo } from 'cryptographix-sim-core'
 export class CommandAPDU implements Kind
 {
   CLA: number; // = 0;
-  INS: number = 0;
-  P1: number = 0;
-  P2: number = 0;
-  data: ByteArray = new ByteArray();
-  Le: number = 0;
-
-//  static kindInfo: KindInfo;
+  INS: number;
+  P1: number;
+  P2: number;
+  data: ByteArray;
+  Le: number;
 
   /**
    * @constructor
@@ -129,7 +127,7 @@ KindBuilder.init( CommandAPDU, 'ISO7816 Command APDU' )
   .byteField( 'INS', 'Instruction' )
   .byteField( 'P1', 'P1 Param' )
   .byteField( 'P2', 'P2 Param' )
-  .integerField( 'Lc', 'Command Length', { calculated: true } )
+  .uint32Field( 'Lc', 'Command Length', { calculated: true } )
   .field( 'data', 'Command Data', ByteArray )
-  .integerField( 'Le', 'Expected Length' )
+  .uint32Field( 'Le', 'Expected Length' )
   ;

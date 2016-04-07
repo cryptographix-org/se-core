@@ -6,10 +6,8 @@ import { ISO7816 } from './iso7816';
  */
 export class ResponseAPDU implements Kind
 {
-  SW: number = ISO7816.SW_SUCCESS;
-  data: ByteArray = new ByteArray();
-
-//  static kindInfo: KindInfo;
+  SW: number;
+  data: ByteArray;
 
   /**
    * @constructor
@@ -70,7 +68,7 @@ export class ResponseAPDU implements Kind
 }
 
 KindBuilder.init( ResponseAPDU, 'ISO7816 Response APDU' )
-  .integerField( 'SW', 'Status Word', { maximum: 0xFFFF } )
-  .integerField( 'La', 'Actual Length',  { calculated: true } )
-  .field( 'Data', 'Response Data', ByteArray )
+  .uint32Field( 'SW', 'Status Word' )
+  .uint32Field( 'La', 'Actual Length',  { calculated: true } )
+  .field( 'data', 'Response Data', ByteArray )
   ;

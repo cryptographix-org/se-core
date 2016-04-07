@@ -1,6 +1,6 @@
 declare module 'cryptographix-se-core'
 {
-  import { ByteArray, ByteEncoding, Kind, EndPoint, Message, Protocol, KindInfo } from 'cryptographix-sim-core';
+  import { ByteArray, ByteEncoding, Kind, EndPoint, Message, Protocol } from 'cryptographix-sim-core';
 
 
   export class Key {
@@ -620,7 +620,6 @@ declare module 'cryptographix-se-core'
   }
 
   export class ALU implements Kind {
-      static kindInfo: KindInfo;
       code: ByteArray;
       data: ByteArray;
       fci: ByteArray;

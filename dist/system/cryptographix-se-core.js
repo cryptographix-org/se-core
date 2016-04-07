@@ -853,11 +853,6 @@ System.register(["cryptographix-sim-core"], function (_export) {
                 function CommandAPDU(attributes) {
                     _classCallCheck(this, CommandAPDU);
 
-                    this.INS = 0;
-                    this.P1 = 0;
-                    this.P2 = 0;
-                    this.data = new ByteArray();
-                    this.Le = 0;
                     Kind.initFields(this, attributes);
                 }
 
@@ -959,7 +954,7 @@ System.register(["cryptographix-sim-core"], function (_export) {
 
             _export("CommandAPDU", CommandAPDU);
 
-            KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').integerField('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', ByteArray).integerField('Le', 'Expected Length');
+            KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').uint32Field('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', ByteArray).uint32Field('Le', 'Expected Length');
 
             _export("ISO7816", ISO7816);
 
@@ -1033,8 +1028,6 @@ System.register(["cryptographix-sim-core"], function (_export) {
                 function ResponseAPDU(attributes) {
                     _classCallCheck(this, ResponseAPDU);
 
-                    this.SW = ISO7816.SW_SUCCESS;
-                    this.data = new ByteArray();
                     Kind.initFields(this, attributes);
                 }
 
@@ -1092,7 +1085,7 @@ System.register(["cryptographix-sim-core"], function (_export) {
 
             _export("ResponseAPDU", ResponseAPDU);
 
-            KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').integerField('SW', 'Status Word', { maximum: 0xFFFF }).integerField('La', 'Actual Length', { calculated: true }).field('Data', 'Response Data', ByteArray);
+            KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').uint32Field('SW', 'Status Word').uint32Field('La', 'Actual Length', { calculated: true }).field('data', 'Response Data', ByteArray);
 
             SlotProtocol = (function () {
                 function SlotProtocol() {
@@ -2796,15 +2789,7 @@ System.register(["cryptographix-sim-core"], function (_export) {
                 function ALU(attributes) {
                     _classCallCheck(this, ALU);
 
-                    this.code = new ByteArray();
-                    this.data = new ByteArray();
-                    this.fci = new ByteArray();
-                    this.dir = new ByteArray();
-                    if (attributes) {
-                        for (var field in ALU.kindInfo.fields) {
-                            if (attributes[field.id]) this[field.id] = attributes[field.id];
-                        }
-                    }
+                    Kind.initFields(this, attributes);
                 }
 
                 ALU.prototype.toJSON = function toJSON() {

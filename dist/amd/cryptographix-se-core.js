@@ -630,11 +630,6 @@ define(["exports", "cryptographix-sim-core"], function (exports, _cryptographixS
         function CommandAPDU(attributes) {
             _classCallCheck(this, CommandAPDU);
 
-            this.INS = 0;
-            this.P1 = 0;
-            this.P2 = 0;
-            this.data = new _cryptographixSimCore.ByteArray();
-            this.Le = 0;
             _cryptographixSimCore.Kind.initFields(this, attributes);
         }
 
@@ -736,7 +731,7 @@ define(["exports", "cryptographix-sim-core"], function (exports, _cryptographixS
 
     exports.CommandAPDU = CommandAPDU;
 
-    _cryptographixSimCore.KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').integerField('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', _cryptographixSimCore.ByteArray).integerField('Le', 'Expected Length');
+    _cryptographixSimCore.KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').uint32Field('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', _cryptographixSimCore.ByteArray).uint32Field('Le', 'Expected Length');
 
     var ISO7816;
     exports.ISO7816 = ISO7816;
@@ -810,8 +805,6 @@ define(["exports", "cryptographix-sim-core"], function (exports, _cryptographixS
         function ResponseAPDU(attributes) {
             _classCallCheck(this, ResponseAPDU);
 
-            this.SW = ISO7816.SW_SUCCESS;
-            this.data = new _cryptographixSimCore.ByteArray();
             _cryptographixSimCore.Kind.initFields(this, attributes);
         }
 
@@ -869,7 +862,7 @@ define(["exports", "cryptographix-sim-core"], function (exports, _cryptographixS
 
     exports.ResponseAPDU = ResponseAPDU;
 
-    _cryptographixSimCore.KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').integerField('SW', 'Status Word', { maximum: 0xFFFF }).integerField('La', 'Actual Length', { calculated: true }).field('Data', 'Response Data', _cryptographixSimCore.ByteArray);
+    _cryptographixSimCore.KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').uint32Field('SW', 'Status Word').uint32Field('La', 'Actual Length', { calculated: true }).field('data', 'Response Data', _cryptographixSimCore.ByteArray);
 
     var SlotProtocol = (function () {
         function SlotProtocol() {
@@ -2767,15 +2760,7 @@ define(["exports", "cryptographix-sim-core"], function (exports, _cryptographixS
         function ALU(attributes) {
             _classCallCheck(this, ALU);
 
-            this.code = new _cryptographixSimCore.ByteArray();
-            this.data = new _cryptographixSimCore.ByteArray();
-            this.fci = new _cryptographixSimCore.ByteArray();
-            this.dir = new _cryptographixSimCore.ByteArray();
-            if (attributes) {
-                for (var field in ALU.kindInfo.fields) {
-                    if (attributes[field.id]) this[field.id] = attributes[field.id];
-                }
-            }
+            _cryptographixSimCore.Kind.initFields(this, attributes);
         }
 
         ALU.prototype.toJSON = function toJSON() {

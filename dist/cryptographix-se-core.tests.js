@@ -1097,6 +1097,7 @@ describe('JSIMMultosCard', () => {
             .then((rAPDU) => {
             console.log(rAPDU);
             var gpoAPDU = CommandAPDU.init()
+                .setINS(0xB8)
                 .setData(new ByteArray([0x83, 0x00]));
             return card.exchangeAPDU(gpoAPDU);
         })
@@ -1107,7 +1108,8 @@ describe('JSIMMultosCard', () => {
             card.executeStep();
             console.log(rAPDU);
             var gacAPDU = CommandAPDU.init()
-                .setData(new ByteArray([0x83, 0x00]));
+                .setINS(0xAC)
+                .setData(new ByteArray([0x00, 0x00]));
             return card.exchangeAPDU(gacAPDU);
         })
             .then((rAPDU) => {
