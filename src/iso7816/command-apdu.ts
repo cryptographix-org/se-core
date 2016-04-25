@@ -11,6 +11,8 @@ export class CommandAPDU implements Kind
   P2: number;
   data: ByteArray;
   Le: number;
+  description: string;
+  details: string;
 
   /**
    * @constructor
@@ -22,36 +24,6 @@ export class CommandAPDU implements Kind
     Kind.initFields( this, attributes );
   }
 
-  public get Lc():number          { return this.data.length; }
-  public get header(): ByteArray  { return new ByteArray( [ this.CLA, this.INS, this.P1, this.P2 ] ); }
-
-  /**
-   * Fluent Builder
-   */
-  public static init( CLA?: number, INS?: number, P1?: number, P2?: number, data?: ByteArray, expectedLen?: number ): CommandAPDU
-  {
-    return ( new CommandAPDU() ).set( CLA, INS, P1, P2, data, expectedLen );
-  }
-
-  public set( CLA: number, INS: number, P1: number, P2: number, data?: ByteArray, expectedLen?: number ): CommandAPDU
-  {
-    this.CLA = CLA;
-    this.INS = INS;
-    this.P1 = P1;
-    this.P2 = P2;
-    this.data = data || new ByteArray();
-    this.Le = expectedLen || 0;
-
-    return this;
-  }
-
-  public setCLA( CLA: number ): CommandAPDU      { this.CLA = CLA; return this; }
-  public setINS( INS: number ): CommandAPDU      { this.INS = INS; return this; }
-  public setP1( P1: number ): CommandAPDU        { this.P1 = P1; return this; }
-  public setP2( P2: number ): CommandAPDU        { this.P2 = P2; return this; }
-  public setData( data: ByteArray ): CommandAPDU { this.data = data; return this; }
-  public setLe( Le: number ): CommandAPDU        { this.Le = Le; return this; }
-
   /**
    * Serialization, returns a JSON object
    */
@@ -62,10 +34,70 @@ export class CommandAPDU implements Kind
       INS: this.INS,
       P1: this.P1,
       P2: this.P2,
-      data: this.data,
-      Le: this.Le
+      data: this.data && this.data.backingArray,
+      Le: this.Le,
+      description: this.description,
+      details: this.details
     };
   }
+
+  public toString(): string {
+    function hex2( val ) { return ( "00" + val.toString( 16 ).toUpperCase() ).substr( -2 ); }
+
+    let s = 'CommandAPDU ';
+    s +=     'CLA=0x' + hex2(this.CLA);
+    s += ','+'INS=0x' + hex2(this.INS);
+    s += ','+'P1=0x' + hex2(this.P1);
+    s += ','+'P2=0x' + hex2(this.P2);
+    if ( this.data && this.data.length ) {
+      s += ','+'Lc=' + this.Lc;
+      s += ','+'Data=' + this.data.toString(ByteArray.HEX);
+    }
+    if ( this.Le )
+      s += ','+'Le=' + this.Le;
+
+    if ( this.description )
+      s += ' ('+this.description+')';
+
+    return s;
+  }
+
+  public get Lc():number          { return this.data.length; }
+  public get header(): ByteArray  { return new ByteArray( [ this.CLA, this.INS, this.P1, this.P2 ] ); }
+
+  /**
+   * Fluent Builder
+   */
+  public static init( CLA?: number, INS?: number, P1?: number, P2?: number, data?: ByteArray ): CommandAPDU
+  {
+    return ( new CommandAPDU() ).set( CLA, INS, P1, P2, data );
+  }
+
+  public set( CLA: number, INS: number, P1: number, P2: number, data?: ByteArray ): this
+  {
+    this.CLA = CLA;
+    this.INS = INS;
+    this.P1 = P1;
+    this.P2 = P2;
+    this.data = data || new ByteArray();
+    this.Le = undefined;
+
+    return this;
+  }
+
+  public setCLA( CLA: number ): this      { this.CLA = CLA; return this; }
+  public setINS( INS: number ): this      { this.INS = INS; return this; }
+  public setP1( P1: number ): this        { this.P1 = P1; return this; }
+  public setP2( P2: number ): this        { this.P2 = P2; return this; }
+  public setData( data: ByteArray ): this { this.data = data; return this; }
+  public setLe( Le: number ): this        { this.Le = Le; return this; }
+  public setDescription( description: string ): this {
+    this.description = description; return this;
+  }
+  public setDetails( details: string ): this {
+    this.details = details; return this;
+  }
+
 
   /**
    * Encoder
@@ -130,4 +162,6 @@ KindBuilder.init( CommandAPDU, 'ISO7816 Command APDU' )
   .uint32Field( 'Lc', 'Command Length', { calculated: true } )
   .field( 'data', 'Command Data', ByteArray )
   .uint32Field( 'Le', 'Expected Length' )
+  .stringField( 'description', 'Description', { /*optional: true*/ } )
+  .stringField( 'details', 'Details', { /*optional: true*/ } )
   ;

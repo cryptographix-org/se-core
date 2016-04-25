@@ -8,6 +8,8 @@ export class ResponseAPDU implements Kind
 {
   SW: number;
   data: ByteArray;
+  description: string;
+  details: string;
 
   /**
    * @constructor
@@ -19,6 +21,35 @@ export class ResponseAPDU implements Kind
     Kind.initFields( this, attributes );
   }
 
+  /**
+   * Serialization, returns a JSON object
+   */
+  public toJSON(): {}
+  {
+    return {
+      data: this.data && this.data.backingArray,
+      SW: this.SW,
+      description: this.description,
+      details: this.details
+    };
+  }
+
+  public toString(): string {
+    function hex4( val ) { return ( "0000" + val.toString( 16 ).toUpperCase() ).substr( -4 ); }
+
+    let s = 'ResponseAPDU ';
+    s +=     'SW=0x' + hex4(this.SW);
+    if ( this.data && this.data.length ) {
+      s += ','+'La=' + this.La;
+      s += ','+'Data=' + this.data.toString(ByteArray.HEX);
+    }
+    if ( this.description )
+      s += ' ('+this.description+')';
+
+    return s;
+  }
+
+
   public get La() { return this.data.length; }
 
   public static init( sw: number, data?: ByteArray ): ResponseAPDU
@@ -26,7 +57,7 @@ export class ResponseAPDU implements Kind
     return ( new ResponseAPDU() ).set( sw, data );
   }
 
-  public set( sw: number, data?: ByteArray ): ResponseAPDU
+  public set( sw: number, data?: ByteArray ): this
   {
     this.SW = sw;
     this.data = data || new ByteArray();
@@ -34,10 +65,17 @@ export class ResponseAPDU implements Kind
     return this;
   }
 
-  public setSW( SW: number ): ResponseAPDU        { this.SW = SW; return this; }
-  public setSW1( SW1: number ): ResponseAPDU      { this.SW = ( this.SW & 0xFF ) | ( SW1 << 8 ); return this; }
-  public setSW2( SW2: number ): ResponseAPDU      { this.SW = ( this.SW & 0xFF00 ) | SW2; return this; }
-  public setData( data: ByteArray ): ResponseAPDU { this.data = data; return this; }
+  public setSW( SW: number ): this        { this.SW = SW; return this; }
+  public setSW1( SW1: number ): this      { this.SW = ( this.SW & 0xFF ) | ( SW1 << 8 ); return this; }
+  public setSW2( SW2: number ): this      { this.SW = ( this.SW & 0xFF00 ) | SW2; return this; }
+  public setData( data: ByteArray ): this { this.data = data; return this; }
+  public setDescription( description: string ): this {
+    this.description = description; return this;
+  }
+  public setDetails( details: string ): this {
+    this.details = details; return this;
+  }
+
 
   /**
    * Encoder function, returns a blob from an APDUResponse object
@@ -71,4 +109,6 @@ KindBuilder.init( ResponseAPDU, 'ISO7816 Response APDU' )
   .uint32Field( 'SW', 'Status Word' )
   .uint32Field( 'La', 'Actual Length',  { calculated: true } )
   .field( 'data', 'Response Data', ByteArray )
+  .stringField( 'description', 'Description', { /*optional: true*/ } )
+  .stringField( 'details', 'Details', { /*optional: true*/ } )
   ;
