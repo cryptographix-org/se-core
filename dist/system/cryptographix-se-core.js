@@ -856,17 +856,48 @@ System.register(["cryptographix-sim-core"], function (_export) {
                     Kind.initFields(this, attributes);
                 }
 
-                CommandAPDU.init = function init(CLA, INS, P1, P2, data, expectedLen) {
-                    return new CommandAPDU().set(CLA, INS, P1, P2, data, expectedLen);
+                CommandAPDU.prototype.toJSON = function toJSON() {
+                    return {
+                        CLA: this.CLA,
+                        INS: this.INS,
+                        P1: this.P1,
+                        P2: this.P2,
+                        data: this.data && this.data.backingArray,
+                        Le: this.Le,
+                        description: this.description,
+                        details: this.details
+                    };
                 };
 
-                CommandAPDU.prototype.set = function set(CLA, INS, P1, P2, data, expectedLen) {
+                CommandAPDU.prototype.toString = function toString() {
+                    function hex2(val) {
+                        return ("00" + val.toString(16).toUpperCase()).substr(-2);
+                    }
+                    var s = 'CommandAPDU ';
+                    s += 'CLA=0x' + hex2(this.CLA);
+                    s += ',' + 'INS=0x' + hex2(this.INS);
+                    s += ',' + 'P1=0x' + hex2(this.P1);
+                    s += ',' + 'P2=0x' + hex2(this.P2);
+                    if (this.data && this.data.length) {
+                        s += ',' + 'Lc=' + this.Lc;
+                        s += ',' + 'Data=' + this.data.toString(ByteArray.HEX);
+                    }
+                    if (this.Le) s += ',' + 'Le=' + this.Le;
+                    if (this.description) s += ' (' + this.description + ')';
+                    return s;
+                };
+
+                CommandAPDU.init = function init(CLA, INS, P1, P2, data) {
+                    return new CommandAPDU().set(CLA, INS, P1, P2, data);
+                };
+
+                CommandAPDU.prototype.set = function set(CLA, INS, P1, P2, data) {
                     this.CLA = CLA;
                     this.INS = INS;
                     this.P1 = P1;
                     this.P2 = P2;
                     this.data = data || new ByteArray();
-                    this.Le = expectedLen || 0;
+                    this.Le = undefined;
                     return this;
                 };
 
@@ -894,15 +925,14 @@ System.register(["cryptographix-sim-core"], function (_export) {
                     this.Le = Le;return this;
                 };
 
-                CommandAPDU.prototype.toJSON = function toJSON() {
-                    return {
-                        CLA: this.CLA,
-                        INS: this.INS,
-                        P1: this.P1,
-                        P2: this.P2,
-                        data: this.data,
-                        Le: this.Le
-                    };
+                CommandAPDU.prototype.setDescription = function setDescription(description) {
+                    this.description = description;
+                    return this;
+                };
+
+                CommandAPDU.prototype.setDetails = function setDetails(details) {
+                    this.details = details;
+                    return this;
                 };
 
                 CommandAPDU.prototype.encodeBytes = function encodeBytes(options) {
@@ -954,7 +984,7 @@ System.register(["cryptographix-sim-core"], function (_export) {
 
             _export("CommandAPDU", CommandAPDU);
 
-            KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').uint32Field('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', ByteArray).uint32Field('Le', 'Expected Length');
+            KindBuilder.init(CommandAPDU, 'ISO7816 Command APDU').byteField('CLA', 'Class').byteField('INS', 'Instruction').byteField('P1', 'P1 Param').byteField('P2', 'P2 Param').uint32Field('Lc', 'Command Length', { calculated: true }).field('data', 'Command Data', ByteArray).uint32Field('Le', 'Expected Length').stringField('description', 'Description', {}).stringField('details', 'Details', {});
 
             _export("ISO7816", ISO7816);
 
@@ -1031,6 +1061,29 @@ System.register(["cryptographix-sim-core"], function (_export) {
                     Kind.initFields(this, attributes);
                 }
 
+                ResponseAPDU.prototype.toJSON = function toJSON() {
+                    return {
+                        data: this.data && this.data.backingArray,
+                        SW: this.SW,
+                        description: this.description,
+                        details: this.details
+                    };
+                };
+
+                ResponseAPDU.prototype.toString = function toString() {
+                    function hex4(val) {
+                        return ("0000" + val.toString(16).toUpperCase()).substr(-4);
+                    }
+                    var s = 'ResponseAPDU ';
+                    s += 'SW=0x' + hex4(this.SW);
+                    if (this.data && this.data.length) {
+                        s += ',' + 'La=' + this.La;
+                        s += ',' + 'Data=' + this.data.toString(ByteArray.HEX);
+                    }
+                    if (this.description) s += ' (' + this.description + ')';
+                    return s;
+                };
+
                 ResponseAPDU.init = function init(sw, data) {
                     return new ResponseAPDU().set(sw, data);
                 };
@@ -1055,6 +1108,16 @@ System.register(["cryptographix-sim-core"], function (_export) {
 
                 ResponseAPDU.prototype.setData = function setData(data) {
                     this.data = data;return this;
+                };
+
+                ResponseAPDU.prototype.setDescription = function setDescription(description) {
+                    this.description = description;
+                    return this;
+                };
+
+                ResponseAPDU.prototype.setDetails = function setDetails(details) {
+                    this.details = details;
+                    return this;
                 };
 
                 ResponseAPDU.prototype.encodeBytes = function encodeBytes(options) {
@@ -1085,7 +1148,7 @@ System.register(["cryptographix-sim-core"], function (_export) {
 
             _export("ResponseAPDU", ResponseAPDU);
 
-            KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').uint32Field('SW', 'Status Word').uint32Field('La', 'Actual Length', { calculated: true }).field('data', 'Response Data', ByteArray);
+            KindBuilder.init(ResponseAPDU, 'ISO7816 Response APDU').uint32Field('SW', 'Status Word').uint32Field('La', 'Actual Length', { calculated: true }).field('data', 'Response Data', ByteArray).stringField('description', 'Description', {}).stringField('details', 'Details', {});
 
             SlotProtocol = (function () {
                 function SlotProtocol() {

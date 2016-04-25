@@ -145,18 +145,23 @@ declare module 'cryptographix-se-core'
       P2: number;
       data: ByteArray;
       Le: number;
+      description: string;
+      details: string;
       constructor(attributes?: {});
+      toJSON(): {};
+      toString(): string;
       Lc: number;
       header: ByteArray;
-      static init(CLA?: number, INS?: number, P1?: number, P2?: number, data?: ByteArray, expectedLen?: number): CommandAPDU;
-      set(CLA: number, INS: number, P1: number, P2: number, data?: ByteArray, expectedLen?: number): CommandAPDU;
-      setCLA(CLA: number): CommandAPDU;
-      setINS(INS: number): CommandAPDU;
-      setP1(P1: number): CommandAPDU;
-      setP2(P2: number): CommandAPDU;
-      setData(data: ByteArray): CommandAPDU;
-      setLe(Le: number): CommandAPDU;
-      toJSON(): {};
+      static init(CLA?: number, INS?: number, P1?: number, P2?: number, data?: ByteArray): CommandAPDU;
+      set(CLA: number, INS: number, P1: number, P2: number, data?: ByteArray): this;
+      setCLA(CLA: number): this;
+      setINS(INS: number): this;
+      setP1(P1: number): this;
+      setP2(P2: number): this;
+      setData(data: ByteArray): this;
+      setLe(Le: number): this;
+      setDescription(description: string): this;
+      setDetails(details: string): this;
       encodeBytes(options?: {}): ByteArray;
       decodeBytes(byteArray: ByteArray, options?: {}): this;
   }
@@ -230,14 +235,20 @@ declare module 'cryptographix-se-core'
   export class ResponseAPDU implements Kind {
       SW: number;
       data: ByteArray;
+      description: string;
+      details: string;
       constructor(attributes?: {});
+      toJSON(): {};
+      toString(): string;
       La: number;
       static init(sw: number, data?: ByteArray): ResponseAPDU;
-      set(sw: number, data?: ByteArray): ResponseAPDU;
-      setSW(SW: number): ResponseAPDU;
-      setSW1(SW1: number): ResponseAPDU;
-      setSW2(SW2: number): ResponseAPDU;
-      setData(data: ByteArray): ResponseAPDU;
+      set(sw: number, data?: ByteArray): this;
+      setSW(SW: number): this;
+      setSW1(SW1: number): this;
+      setSW2(SW2: number): this;
+      setData(data: ByteArray): this;
+      setDescription(description: string): this;
+      setDetails(details: string): this;
       encodeBytes(options?: {}): ByteArray;
       decodeBytes(byteArray: ByteArray, options?: {}): this;
   }
